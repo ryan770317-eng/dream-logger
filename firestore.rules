@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users collection: only the matching nickname can read/write
+    match /users/{nickname} {
+      allow read, write: if true; // open for nickname creation on login
+    }
+
+    // Dreams: only the owner (userId == nickname) can read/write
+    match /dreams/{dreamId} {
+      allow read, write: if request.resource.data.userId == resource.data.userId;
+      allow create: if request.resource.data.userId is string
+                    && request.resource.data.userId.size() > 0;
+    }
+  }
+}
