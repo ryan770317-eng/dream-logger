@@ -66,33 +66,52 @@ export default function DreamsPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="flex items-center justify-between px-5 py-4 sticky top-0 bg-[#0f0f13]/90 backdrop-blur-sm z-10">
-        <button onClick={() => router.push('/record')} className="text-gray-400 text-sm">
+      {/* Header */}
+      <header
+        className="flex items-center justify-between px-5 py-3 sticky top-0 z-20"
+        style={{
+          background: 'rgba(8,8,18,0.85)',
+          borderBottom: '1px solid var(--border)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+        }}
+      >
+        <button
+          onClick={() => router.push('/record')}
+          className="text-sm transition-colors"
+          style={{ color: 'var(--muted)' }}
+        >
           ← 錄音
         </button>
-        <h1 className="text-white font-semibold">我的夢境</h1>
-        <span className="text-gray-500 text-sm">{dreams.length} 則</span>
+        <h1 className="font-semibold" style={{ color: 'var(--text)' }}>我的夢境</h1>
+        <span className="text-sm mono" style={{ color: 'var(--muted)' }}>
+          {dreams.length} 則
+        </span>
       </header>
 
-      <div className="px-4 pb-2 sticky top-[60px] bg-[#0f0f13]/90 backdrop-blur-sm z-10">
+      {/* Search */}
+      <div
+        className="px-4 pt-3 pb-2 sticky z-10"
+        style={{ top: '49px', background: 'rgba(8,8,18,0.85)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
+      >
         <input
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="搜尋夢境..."
-          className="input-field text-base py-3"
+          className="input-field text-sm"
         />
       </div>
 
+      {/* Tags */}
       {allTags.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto px-4 pb-3 no-scrollbar sticky top-[120px] bg-[#0f0f13]/90 backdrop-blur-sm z-10">
+        <div
+          className="flex gap-2 overflow-x-auto px-4 pb-3 sticky z-10"
+          style={{ top: '105px', background: 'rgba(8,8,18,0.85)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
+        >
           <button
             onClick={() => setActiveTag('')}
-            className={`shrink-0 text-sm px-3 py-1.5 rounded-full border transition-colors ${
-              !activeTag
-                ? 'bg-indigo-600 border-indigo-600 text-white'
-                : 'border-gray-600 text-gray-400'
-            }`}
+            className={`shrink-0 tag-pill${!activeTag ? ' active' : ''}`}
           >
             全部
           </button>
@@ -100,11 +119,7 @@ export default function DreamsPage() {
             <button
               key={tag}
               onClick={() => setActiveTag(tag === activeTag ? '' : tag)}
-              className={`shrink-0 text-sm px-3 py-1.5 rounded-full border transition-colors ${
-                activeTag === tag
-                  ? 'bg-indigo-600 border-indigo-600 text-white'
-                  : 'border-gray-600 text-gray-400'
-              }`}
+              className={`shrink-0 tag-pill${activeTag === tag ? ' active' : ''}`}
             >
               {tag}
             </button>
@@ -112,28 +127,32 @@ export default function DreamsPage() {
         </div>
       )}
 
+      {/* Content */}
       <main className="flex-1 px-4 pb-6">
         {loading ? (
           <div className="flex justify-center items-center h-40">
-            <span className="text-gray-400 animate-pulse">載入中...</span>
+            <span className="mono text-sm animate-pulse" style={{ color: 'var(--muted)' }}>
+              載入中...
+            </span>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 gap-3">
             <span className="text-4xl">🌫️</span>
-            <p className="text-gray-400">
+            <p className="text-sm" style={{ color: 'var(--muted)' }}>
               {dreams.length === 0 ? '還沒有夢境記錄' : '沒有符合的結果'}
             </p>
             {dreams.length === 0 && (
               <button
                 onClick={() => router.push('/record')}
-                className="text-indigo-400 text-sm underline"
+                className="text-sm transition-colors"
+                style={{ color: 'var(--accent)' }}
               >
                 去錄第一個夢 →
               </button>
             )}
           </div>
         ) : (
-          <div className="space-y-3 mt-2">
+          <div className="space-y-3 mt-3">
             {filtered.map((dream) => (
               <DreamCard key={dream.id} dream={dream} />
             ))}

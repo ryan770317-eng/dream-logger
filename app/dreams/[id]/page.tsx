@@ -49,12 +49,30 @@ export default function DreamDetailPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="flex items-center justify-between px-5 py-4 sticky top-0 bg-[#0f0f13]/90 backdrop-blur-sm z-10">
-        <button onClick={() => router.push('/dreams')} className="text-gray-400">
+      {/* Header */}
+      <header
+        className="flex items-center justify-between px-5 py-3 sticky top-0 z-20"
+        style={{
+          background: 'rgba(8,8,18,0.85)',
+          borderBottom: '1px solid var(--border)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+        }}
+      >
+        <button
+          onClick={() => router.push('/dreams')}
+          className="text-sm transition-colors"
+          style={{ color: 'var(--muted)' }}
+        >
           ← 返回
         </button>
+        <span />
         {dream && (
-          <button onClick={handleDelete} className="text-red-400 text-sm">
+          <button
+            onClick={handleDelete}
+            className="text-sm transition-colors"
+            style={{ color: 'var(--danger)' }}
+          >
             刪除
           </button>
         )}
@@ -63,12 +81,14 @@ export default function DreamDetailPage() {
       <main className="flex-1 px-4 pb-8">
         {loading ? (
           <div className="flex justify-center items-center h-40">
-            <span className="text-gray-400 animate-pulse">載入中...</span>
+            <span className="mono text-sm animate-pulse" style={{ color: 'var(--muted)' }}>
+              載入中...
+            </span>
           </div>
         ) : notFound ? (
           <div className="flex flex-col items-center justify-center h-40 gap-3">
             <span className="text-4xl">🌫️</span>
-            <p className="text-gray-400">找不到這則夢境</p>
+            <p className="text-sm" style={{ color: 'var(--muted)' }}>找不到這則夢境</p>
           </div>
         ) : dream ? (
           <DreamDetail dream={dream} />

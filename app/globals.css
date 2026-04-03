@@ -1,19 +1,72 @@
 @import "tailwindcss";
 
+:root {
+  --bg: #080812;
+  --surface: #0d0d1c;
+  --panel-bg: rgba(13, 13, 28, 0.88);
+  --border: rgba(120, 100, 255, 0.18);
+  --accent: #7c6af7;
+  --accent-dim: rgba(124, 106, 247, 0.15);
+  --sky: #38bdf8;
+  --text: #e2e2f0;
+  --muted: #6b6b8a;
+  --success: #34d399;
+  --danger: #f87171;
+  --danger-dim: rgba(248, 113, 113, 0.12);
+}
+
 @layer base {
   html {
-    font-size: 18px;
+    font-size: 16px;
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    background-color: #0f0f13;
-    color: white;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    background-image: radial-gradient(circle, rgba(120,100,255,0.07) 1px, transparent 1px);
+    background-size: 28px 28px;
+    min-height: 100vh;
   }
 }
 
 @layer components {
+  .panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 12px;
+  }
   .input-field {
-    @apply w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500;
+    @apply w-full px-4 py-3 rounded-xl text-[--text] placeholder-[--muted] focus:outline-none transition-all;
+    background: rgba(13, 13, 28, 0.7);
+    border: 1px solid var(--border);
+  }
+  .input-field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(124,106,247,0.2);
+  }
+  .btn-accent {
+    @apply font-semibold text-white transition-all active:scale-95;
+    background: var(--accent);
+    border-radius: 8px;
+    padding: 10px 20px;
+  }
+  .btn-accent:disabled { opacity: 0.4; }
+  .btn-accent:hover:not(:disabled) { background: #8b7bf8; }
+  .tag-pill {
+    @apply text-xs px-2.5 py-1 rounded-full border transition-colors;
+    border-color: var(--border);
+    color: var(--muted);
+    background: var(--accent-dim);
+  }
+  .tag-pill.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .mono {
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
   }
 }

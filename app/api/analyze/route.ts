@@ -3,10 +3,15 @@ import Anthropic from '@anthropic-ai/sdk';
 
 export const maxDuration = 60;
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
 export async function POST(req: NextRequest) {
   try {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      console.error('ANTHROPIC_API_KEY not set');
+      return NextResponse.json({ error: 'ANTHROPIC_API_KEY 未設定', detail: 'Missing API key' }, { status: 500 });
+    }
+    const anthropic = new Anthropic({ apiKey });
+
     const { transcript } = await req.json();
 
     if (!transcript) {
@@ -53,6 +58,7 @@ ${transcript}
     return NextResponse.json(analysis);
   } catch (error) {
     console.error('Analysis error:', error);
-    return NextResponse.json({ error: '夢境分析失敗' }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: '夢境分析失敗', detail: msg }, { status: 500 });
   }
 }

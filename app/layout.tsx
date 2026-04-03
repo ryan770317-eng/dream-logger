@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0f0f13',
+  themeColor: '#080812',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
-      <body className="min-h-screen bg-[#0f0f13]">
+      <body className="min-h-screen" style={{ backgroundColor: '#080812' }}>
         <ServiceWorkerRegistrar />
         {children}
       </body>
