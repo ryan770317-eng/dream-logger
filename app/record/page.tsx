@@ -11,9 +11,8 @@ import { DreamAnalysis } from '@/lib/types';
 
 interface PendingRecording {
   id: string;
-  blob: Blob;
+  transcript: string;
   timestamp: Date;
-  duration: number;
   status: 'pending' | 'processing' | 'error';
   error?: string;
 }
@@ -39,12 +38,6 @@ function formatTimestamp(date: Date): string {
   return `${mm}/${dd} ${hhmm}`;
 }
 
-function formatDuration(secs: number): string {
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
 export default function RecordPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [recordings, setRecordings] = useState<PendingRecording[]>([]);
@@ -61,18 +54,17 @@ export default function RecordPage() {
     }
   }, [router]);
 
-  const handleRecordingComplete = (blob: Blob, duration: number) => {
+  const handleSpeechResult = (transcript: string) => {
     const newRec: PendingRecording = {
       id: String(Date.now()),
-      blob,
+      transcript,
       timestamp: new Date(),
-      duration,
       status: 'pending',
     };
     setRecordings((prev) => [newRec, ...prev]);
   };
 
-  const handleTranscribe = async (id: string) => {
+  const handleAnalyze = async (id: string) => {
     const rec = recordings.find((r) => r.id === id);
     if (!rec) return;
 
@@ -81,21 +73,10 @@ export default function RecordPage() {
     );
 
     try {
-      const formData = new FormData();
-      const ext = rec.blob.type.includes('mp4') ? 'audio.m4a' : 'audio.webm';
-      formData.append('audio', rec.blob, ext);
-
-      const transcribeRes = await fetch('/api/transcribe', { method: 'POST', body: formData });
-      if (!transcribeRes.ok) {
-        const errData = await transcribeRes.json().catch(() => ({}));
-        throw new Error(errData.error || '語音辨識失敗');
-      }
-      const { transcript } = await transcribeRes.json();
-
       const analyzeRes = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript }),
+        body: JSON.stringify({ transcript: rec.transcript }),
       });
       if (!analyzeRes.ok) {
         const errData = await analyzeRes.json().catch(() => ({}));
@@ -106,7 +87,7 @@ export default function RecordPage() {
       setRecordings((prev) =>
         prev.map((r) => r.id === id ? { ...r, status: 'pending' } : r)
       );
-      setPreviewData({ analysis, transcript, recordingId: id });
+      setPreviewData({ analysis, transcript: rec.transcript, recordingId: id });
     } catch (err) {
       const msg = err instanceof Error ? err.message : '發生錯誤';
       setRecordings((prev) =>
@@ -191,32 +172,29 @@ export default function RecordPage() {
                 記錄夢境
               </h1>
               <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                按住麥克風，說出你的夢
+                點擊麥克風，說出你的夢
               </p>
             </div>
-            <RecordButton onRecordingComplete={handleRecordingComplete} />
+            <RecordButton onSpeechResult={handleSpeechResult} />
           </div>
         ) : (
           /* Has recordings: compact button + list */
           <div className="flex flex-col gap-5 pt-5">
             {/* Compact record button */}
-            <div className="flex flex-col items-center gap-2">
-              <RecordButton onRecordingComplete={handleRecordingComplete} compact />
-              <p className="text-xs mono" style={{ color: 'var(--muted)' }}>
-                按住錄製新夢境
-              </p>
+            <div className="flex flex-col items-center">
+              <RecordButton onSpeechResult={handleSpeechResult} compact />
             </div>
 
             {/* Recordings list */}
             <div className="space-y-3">
               <h2 className="text-xs mono px-1" style={{ color: 'var(--muted)' }}>
-                待辨識錄音 ({recordings.length})
+                待分析記錄 ({recordings.length})
               </h2>
               {recordings.map((rec) => (
                 <RecordingCard
                   key={rec.id}
                   rec={rec}
-                  onTranscribe={handleTranscribe}
+                  onAnalyze={handleAnalyze}
                   onDelete={handleDeleteRecording}
                 />
               ))}
@@ -240,11 +218,11 @@ export default function RecordPage() {
 
 function RecordingCard({
   rec,
-  onTranscribe,
+  onAnalyze,
   onDelete,
 }: {
   rec: PendingRecording;
-  onTranscribe: (id: string) => void;
+  onAnalyze: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
   return (
@@ -259,42 +237,24 @@ function RecordingCard({
       {/* Status dot */}
       <div className="shrink-0">
         {rec.status === 'pending' && (
-          <div
-            className="w-2.5 h-2.5 rounded-full"
-            style={{ background: 'var(--accent)' }}
-          />
+          <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--accent)' }} />
         )}
         {rec.status === 'processing' && (
-          <div
-            className="w-2.5 h-2.5 rounded-full animate-pulse"
-            style={{ background: 'var(--sky)' }}
-          />
+          <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: 'var(--sky)' }} />
         )}
         {rec.status === 'error' && (
-          <div
-            className="w-2.5 h-2.5 rounded-full"
-            style={{ background: 'var(--danger)' }}
-          />
+          <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--danger)' }} />
         )}
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm mono font-medium" style={{ color: 'var(--text)' }}>
-            {formatTimestamp(rec.timestamp)}
-          </span>
-          <span
-            className="text-xs mono px-1.5 py-0.5 rounded"
-            style={{
-              background: 'var(--accent-dim)',
-              color: 'var(--accent)',
-              border: '1px solid var(--border)',
-            }}
-          >
-            {formatDuration(rec.duration)}
-          </span>
-        </div>
+        <span className="text-sm mono font-medium" style={{ color: 'var(--text)' }}>
+          {formatTimestamp(rec.timestamp)}
+        </span>
+        <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--muted)' }}>
+          {rec.transcript}
+        </p>
         {rec.status === 'error' && rec.error && (
           <p className="text-xs mt-1 truncate" style={{ color: 'var(--danger)' }}>
             {rec.error}
@@ -306,20 +266,20 @@ function RecordingCard({
       <div className="flex items-center gap-2 shrink-0">
         {rec.status === 'pending' && (
           <button
-            onClick={() => onTranscribe(rec.id)}
+            onClick={() => onAnalyze(rec.id)}
             className="btn-accent text-xs px-3 py-1.5"
           >
-            開始辨識
+            分析
           </button>
         )}
         {rec.status === 'processing' && (
           <span className="text-xs mono" style={{ color: 'var(--sky)' }}>
-            辨識中...
+            分析中...
           </span>
         )}
         {rec.status === 'error' && (
           <button
-            onClick={() => onTranscribe(rec.id)}
+            onClick={() => onAnalyze(rec.id)}
             className="text-xs px-3 py-1.5 rounded-lg transition-colors"
             style={{
               background: 'var(--danger-dim)',
@@ -335,7 +295,7 @@ function RecordingCard({
             onClick={() => onDelete(rec.id)}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-sm transition-colors"
             style={{ color: 'var(--muted)' }}
-            aria-label="刪除錄音"
+            aria-label="刪除"
           >
             ✕
           </button>

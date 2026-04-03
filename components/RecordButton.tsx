@@ -3,22 +3,24 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 
 interface RecordButtonProps {
-  onRecordingComplete: (blob: Blob, duration: number) => void;
+  onSpeechResult: (transcript: string) => void;
   disabled?: boolean;
   compact?: boolean;
 }
 
-export default function RecordButton({ onRecordingComplete, disabled, compact }: RecordButtonProps) {
+export default function RecordButton({ onSpeechResult, disabled, compact }: RecordButtonProps) {
   const [isRecording, setIsRecording] = useState(false);
+  const [liveText, setLiveText] = useState('');
   const [duration, setDuration] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const transcriptRef = useRef('');
   const startTimeRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      recognitionRef.current?.abort();
     };
   }, []);
 
@@ -28,79 +30,75 @@ export default function RecordButton({ onRecordingComplete, disabled, compact }:
     return `${m}:${String(s).padStart(2, '0')}`;
   };
 
-  const startRecording = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      const mimeType =
-        MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' :
-        MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' :
-        MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' :
-        '';
-
-      const mediaRecorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream);
-
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
-      startTimeRef.current = Date.now();
-      setDuration(0);
-
-      timerRef.current = setInterval(() => {
-        setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
-      }, 500);
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-        const elapsedSeconds = Math.round((Date.now() - startTimeRef.current) / 1000);
-        const actualType = mediaRecorder.mimeType || mimeType || 'audio/mp4';
-        const blob = new Blob(chunksRef.current, { type: actualType });
-        if (blob.size > 0) {
-          onRecordingComplete(blob, elapsedSeconds);
-        } else {
-          alert('錄音太短，請重新錄製');
-        }
-        stream.getTracks().forEach((track) => track.stop());
-        setDuration(0);
-      };
-
-      mediaRecorder.start(100);
-      setIsRecording(true);
-    } catch (err) {
-      console.error('Recording error:', err);
-      alert('無法錄音：' + (err instanceof Error ? err.message : '請確認麥克風權限'));
+  const startRecording = useCallback(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRec) {
+      alert('瀏覽器不支援語音識別，請使用 Chrome 或 Safari');
+      return;
     }
-  }, [onRecordingComplete]);
+
+    const recognition: SpeechRecognition = new SpeechRec();
+    recognition.lang = 'zh-TW';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognitionRef.current = recognition;
+    transcriptRef.current = '';
+
+    startTimeRef.current = Date.now();
+    setDuration(0);
+    setLiveText('');
+    timerRef.current = setInterval(() => {
+      setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
+    }, 500);
+
+    recognition.onresult = (event) => {
+      let text = '';
+      for (let i = 0; i < event.results.length; i++) {
+        text += event.results[i][0].transcript;
+      }
+      transcriptRef.current = text;
+      setLiveText(text);
+    };
+
+    recognition.onend = () => {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      setDuration(0);
+      setIsRecording(false);
+      const final = transcriptRef.current.trim();
+      setLiveText('');
+      if (final) {
+        onSpeechResult(final);
+      } else {
+        alert('沒有偵測到語音，請重新錄製');
+      }
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error !== 'aborted') {
+        console.error('Speech error:', event.error);
+        alert('語音識別錯誤：' + event.error);
+      }
+    };
+
+    recognition.start();
+    setIsRecording(true);
+  }, [onSpeechResult]);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
-  }, [isRecording]);
+    recognitionRef.current?.stop();
+  }, []);
 
-  // Click-to-toggle: click once to start, click again to stop
   const handleClick = useCallback(() => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
+    if (isRecording) stopRecording();
+    else startRecording();
   }, [isRecording, startRecording, stopRecording]);
 
   const btnSize = compact ? 'w-24 h-24' : 'w-40 h-40';
   const iconSize = compact ? 'text-3xl' : 'text-5xl';
 
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div className="flex flex-col items-center gap-6 w-full">
       <button
         onClick={handleClick}
         disabled={disabled}
@@ -111,25 +109,13 @@ export default function RecordButton({ onRecordingComplete, disabled, compact }:
           ${isRecording ? 'scale-110' : 'hover:brightness-110 active:scale-95'}
           ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
         `}
-        style={
-          isRecording
-            ? {
-                background: 'var(--danger)',
-                color: 'white',
-                boxShadow: '0 0 0 4px rgba(248,113,113,0.3), 0 0 32px rgba(248,113,113,0.4)',
-              }
-            : {
-                background: 'var(--accent)',
-                color: '#0a0a08',
-                boxShadow: '0 0 0 1px rgba(247,247,87,0.5), 0 8px 32px rgba(247,247,87,0.3)',
-              }
+        style={isRecording
+          ? { background: 'var(--danger)', color: 'white', boxShadow: '0 0 0 4px rgba(248,113,113,0.3), 0 0 32px rgba(248,113,113,0.4)' }
+          : { background: 'var(--accent)', color: '#0a0a08', boxShadow: '0 0 0 1px rgba(247,247,87,0.5), 0 8px 32px rgba(247,247,87,0.3)' }
         }
       >
         {isRecording && (
-          <span
-            className="absolute inset-0 rounded-full animate-ping"
-            style={{ background: 'rgba(248,113,113,0.2)' }}
-          />
+          <span className="absolute inset-0 rounded-full animate-ping" style={{ background: 'rgba(248,113,113,0.2)' }} />
         )}
         {isRecording ? (
           <span className="flex flex-col items-center gap-1.5 relative z-10">
@@ -147,6 +133,12 @@ export default function RecordButton({ onRecordingComplete, disabled, compact }:
       <p className="text-sm mono" style={{ color: isRecording ? 'var(--danger)' : 'var(--muted)' }}>
         {isRecording ? '▶ 錄音中 · 再點一下停止' : compact ? '點擊錄製' : '點擊開始，再點停止'}
       </p>
+
+      {isRecording && liveText && (
+        <div className="panel px-4 py-3 w-full max-w-xs">
+          <p className="text-sm text-center" style={{ color: 'var(--muted)' }}>{liveText}</p>
+        </div>
+      )}
     </div>
   );
 }
