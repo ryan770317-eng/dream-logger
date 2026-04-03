@@ -66,7 +66,7 @@ export default function RecordButton({ onRecordingComplete, disabled, compact }:
         if (blob.size > 0) {
           onRecordingComplete(blob, elapsedSeconds);
         } else {
-          alert('錄音太短，請按住麥克風說話');
+          alert('錄音太短，請重新錄製');
         }
         stream.getTracks().forEach((track) => track.stop());
         setDuration(0);
@@ -87,24 +87,28 @@ export default function RecordButton({ onRecordingComplete, disabled, compact }:
     }
   }, [isRecording]);
 
+  // Click-to-toggle: click once to start, click again to stop
+  const handleClick = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  }, [isRecording, startRecording, stopRecording]);
+
   const btnSize = compact ? 'w-24 h-24' : 'w-40 h-40';
   const iconSize = compact ? 'text-3xl' : 'text-5xl';
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-6">
       <button
-        onPointerDown={startRecording}
-        onPointerUp={stopRecording}
-        onPointerLeave={stopRecording}
+        onClick={handleClick}
         disabled={disabled}
         className={`
           ${btnSize} rounded-full font-semibold
           flex items-center justify-center select-none touch-none
           transition-all duration-150 shadow-2xl relative
-          ${isRecording
-            ? 'scale-110'
-            : 'hover:brightness-110 active:scale-95'
-          }
+          ${isRecording ? 'scale-110' : 'hover:brightness-110 active:scale-95'}
           ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
         `}
         style={
@@ -124,29 +128,25 @@ export default function RecordButton({ onRecordingComplete, disabled, compact }:
         {isRecording && (
           <span
             className="absolute inset-0 rounded-full animate-ping"
-            style={{ background: 'rgba(248,113,113,0.25)' }}
+            style={{ background: 'rgba(248,113,113,0.2)' }}
           />
         )}
         {isRecording ? (
-          <span className="flex flex-col items-center gap-1 relative z-10">
-            <span
-              className="w-4 h-4 rounded-sm animate-pulse"
-              style={{ background: 'white' }}
-            />
+          <span className="flex flex-col items-center gap-1.5 relative z-10">
+            <span className="w-4 h-4 rounded-sm animate-pulse" style={{ background: 'white' }} />
             <span className="text-xs mono font-bold">{formatDuration(duration)}</span>
           </span>
         ) : (
-          <span className="flex flex-col items-center gap-1">
+          <span className="flex flex-col items-center gap-1.5">
             <span className={iconSize}>🎙️</span>
-            {!compact && <span className="text-sm">按住錄音</span>}
+            {!compact && <span className="text-sm font-medium">點擊錄音</span>}
           </span>
         )}
       </button>
-      {isRecording && (
-        <p className="text-sm animate-pulse mono" style={{ color: 'var(--danger)' }}>
-          放開停止錄音
-        </p>
-      )}
+
+      <p className="text-sm mono" style={{ color: isRecording ? 'var(--danger)' : 'var(--muted)' }}>
+        {isRecording ? '▶ 錄音中 · 再點一下停止' : compact ? '點擊錄製' : '點擊開始，再點停止'}
+      </p>
     </div>
   );
 }
