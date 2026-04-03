@@ -15,8 +15,18 @@ export default function RecordButton({ onRecordingComplete, disabled }: RecordBu
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+      // iOS Safari only supports audio/mp4; desktop Chrome supports audio/webm
+      const mimeType =
+        MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' :
+        MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' :
+        MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' :
+        '';
+
+      const mediaRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
@@ -25,15 +35,21 @@ export default function RecordButton({ onRecordingComplete, disabled }: RecordBu
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: mimeType });
-        onRecordingComplete(blob);
+        const actualType = mediaRecorder.mimeType || mimeType || 'audio/mp4';
+        const blob = new Blob(chunksRef.current, { type: actualType });
+        if (blob.size > 0) {
+          onRecordingComplete(blob);
+        } else {
+          alert('錄音太短，請按住麥克風說話');
+        }
         stream.getTracks().forEach((track) => track.stop());
       };
 
       mediaRecorder.start(100);
       setIsRecording(true);
-    } catch {
-      alert('無法取得麥克風權限，請確認設定');
+    } catch (err) {
+      console.error('Recording error:', err);
+      alert('無法錄音：' + (err instanceof Error ? err.message : '請確認麥克風權限'));
     }
   }, [onRecordingComplete]);
 
