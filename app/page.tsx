@@ -41,22 +41,10 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo area */}
         <div className="text-center mb-10">
-          <div
-            className="w-20 h-20 rounded-2xl mx-auto mb-5 flex items-center justify-center text-4xl"
-            style={{
-              background: 'rgba(124, 106, 247, 0.15)',
-              border: '1px solid rgba(124, 106, 247, 0.35)',
-              boxShadow: '0 0 32px rgba(124, 106, 247, 0.2)',
-            }}
-          >
-            🌙
-          </div>
+          <div className="text-7xl mb-4">🌙</div>
           <h1 className="text-3xl font-bold" style={{ color: 'var(--text)' }}>
             夢境記錄器
           </h1>
-          <p className="mt-1.5 text-sm mono" style={{ color: 'var(--muted)' }}>
-            RyanOS · Dream Logger
-          </p>
         </div>
 
         {/* Panel */}
