@@ -145,7 +145,8 @@ export default function PreviewModal({
           <button
             onClick={() => onSave(edited, editedTranscript)}
             disabled={isSaving}
-            className="flex-1 py-4 rounded-2xl bg-indigo-600 text-white text-lg font-semibold disabled:opacity-50"
+            className="flex-1 py-4 rounded-2xl text-lg font-semibold disabled:opacity-50"
+            style={{ background: 'var(--accent)', color: '#0a0a08' }}
           >
             {isSaving ? '儲存中...' : '儲存'}
           </button>

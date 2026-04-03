@@ -98,7 +98,7 @@ export default function RecordButton({ onRecordingComplete, disabled, compact }:
         onPointerLeave={stopRecording}
         disabled={disabled}
         className={`
-          ${btnSize} rounded-full text-white font-semibold
+          ${btnSize} rounded-full font-semibold
           flex items-center justify-center select-none touch-none
           transition-all duration-150 shadow-2xl relative
           ${isRecording
@@ -111,11 +111,13 @@ export default function RecordButton({ onRecordingComplete, disabled, compact }:
           isRecording
             ? {
                 background: 'var(--danger)',
+                color: 'white',
                 boxShadow: '0 0 0 4px rgba(248,113,113,0.3), 0 0 32px rgba(248,113,113,0.4)',
               }
             : {
                 background: 'var(--accent)',
-                boxShadow: '0 0 0 1px rgba(124,106,247,0.4), 0 8px 32px rgba(124,106,247,0.35)',
+                color: '#0a0a08',
+                boxShadow: '0 0 0 1px rgba(247,247,87,0.5), 0 8px 32px rgba(247,247,87,0.3)',
               }
         }
       >

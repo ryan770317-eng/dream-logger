@@ -4,8 +4,8 @@
   "description": "用語音記錄你的夢境",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f0f13",
-  "theme_color": "#0f0f13",
+  "background_color": "#080812",
+  "theme_color": "#080812",
   "orientation": "portrait",
   "icons": [
     {
