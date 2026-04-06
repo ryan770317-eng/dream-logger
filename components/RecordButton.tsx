@@ -12,7 +12,8 @@ export default function RecordButton({ onSpeechResult, disabled, compact }: Reco
   const [isRecording, setIsRecording] = useState(false);
   const [liveText, setLiveText] = useState('');
   const [duration, setDuration] = useState(0);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
   const transcriptRef = useRef('');
   const startTimeRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -38,7 +39,7 @@ export default function RecordButton({ onSpeechResult, disabled, compact }: Reco
       return;
     }
 
-    const recognition: SpeechRecognition = new SpeechRec();
+    const recognition = new SpeechRec();
     recognition.lang = 'zh-TW';
     recognition.continuous = true;
     recognition.interimResults = true;
@@ -52,7 +53,8 @@ export default function RecordButton({ onSpeechResult, disabled, compact }: Reco
       setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
     }, 500);
 
-    recognition.onresult = (event) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
       let text = '';
       for (let i = 0; i < event.results.length; i++) {
         text += event.results[i][0].transcript;
@@ -74,7 +76,8 @@ export default function RecordButton({ onSpeechResult, disabled, compact }: Reco
       }
     };
 
-    recognition.onerror = (event) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onerror = (event: any) => {
       if (event.error !== 'aborted') {
         console.error('Speech error:', event.error);
         alert('語音識別錯誤：' + event.error);
