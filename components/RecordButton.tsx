@@ -17,6 +17,10 @@ export default function RecordButton({ onSpeechResult, disabled, compact }: Reco
   const transcriptRef = useRef('');
   const startTimeRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Tracks whether the user intentionally stopped — prevents iOS auto-restart
+  const stoppedByUserRef = useRef(false);
+  // Prevents double alert when onerror fires before onend
+  const errorFiredRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -31,27 +35,18 @@ export default function RecordButton({ onSpeechResult, disabled, compact }: Reco
     return `${m}:${String(s).padStart(2, '0')}`;
   };
 
-  const startRecording = useCallback(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRec) {
-      alert('瀏覽器不支援語音識別，請使用 Chrome 或 Safari');
-      return;
-    }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getSpeechRec = () => (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+  const createAndStartRecognition = useCallback(() => {
+    const SpeechRec = getSpeechRec();
+    if (!SpeechRec) return;
 
     const recognition = new SpeechRec();
     recognition.lang = 'zh-TW';
     recognition.continuous = true;
     recognition.interimResults = true;
     recognitionRef.current = recognition;
-    transcriptRef.current = '';
-
-    startTimeRef.current = Date.now();
-    setDuration(0);
-    setLiveText('');
-    timerRef.current = setInterval(() => {
-      setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
-    }, 500);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onresult = (event: any) => {
@@ -64,31 +59,79 @@ export default function RecordButton({ onSpeechResult, disabled, compact }: Reco
     };
 
     recognition.onend = () => {
+      // iOS: auto-restart if user hasn't clicked stop
+      if (!stoppedByUserRef.current) {
+        try {
+          recognitionRef.current?.start();
+        } catch {
+          // Already started — ignore
+        }
+        return;
+      }
+
+      // User clicked stop — finalise
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
       setDuration(0);
       setIsRecording(false);
       const final = transcriptRef.current.trim();
       setLiveText('');
+
       if (final) {
         onSpeechResult(final);
-      } else {
+      } else if (!errorFiredRef.current) {
         alert('沒有偵測到語音，請重新錄製');
       }
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onerror = (event: any) => {
-      if (event.error !== 'aborted') {
-        console.error('Speech error:', event.error);
+      if (event.error === 'aborted') return;
+      errorFiredRef.current = true;
+      console.error('Speech error:', event.error);
+
+      const messages: Record<string, string> = {
+        'not-allowed': '麥克風權限被拒絕，請在瀏覽器設定中允許',
+        'network': '網路錯誤，請確認連線後再試',
+        'no-speech': '',      // iOS常見，靜默處理，onend會重啟
+        'audio-capture': '找不到麥克風裝置',
+        'service-not-allowed': '語音辨識服務不可用，請使用 Chrome 或 Safari',
+      };
+
+      const msg = messages[event.error];
+      if (msg === undefined) {
         alert('語音識別錯誤：' + event.error);
+      } else if (msg) {
+        alert(msg);
       }
     };
 
     recognition.start();
-    setIsRecording(true);
   }, [onSpeechResult]);
 
+  const startRecording = useCallback(() => {
+    const SpeechRec = getSpeechRec();
+    if (!SpeechRec) {
+      alert('瀏覽器不支援語音識別，請使用 Chrome 或 Safari');
+      return;
+    }
+
+    stoppedByUserRef.current = false;
+    errorFiredRef.current = false;
+    transcriptRef.current = '';
+
+    startTimeRef.current = Date.now();
+    setDuration(0);
+    setLiveText('');
+    timerRef.current = setInterval(() => {
+      setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
+    }, 500);
+
+    createAndStartRecognition();
+    setIsRecording(true);
+  }, [createAndStartRecognition]);
+
   const stopRecording = useCallback(() => {
+    stoppedByUserRef.current = true;
     recognitionRef.current?.stop();
   }, []);
 

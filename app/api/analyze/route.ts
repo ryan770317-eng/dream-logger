@@ -54,12 +54,15 @@ ${transcript}
       return NextResponse.json({ error: 'AI 回應格式錯誤' }, { status: 500 });
     }
 
-    const rawText = content.text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+    // Extract JSON even if Claude wraps it in markdown fences
+    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return NextResponse.json({ error: 'AI 回應無法解析', detail: content.text }, { status: 500 });
+    }
     let analysis;
     try {
-      analysis = JSON.parse(rawText);
+      analysis = JSON.parse(jsonMatch[0]);
     } catch {
-      console.error('JSON parse error, raw text:', rawText);
       return NextResponse.json({ error: 'AI 回應格式錯誤', detail: 'Invalid JSON' }, { status: 500 });
     }
     return NextResponse.json(analysis);
