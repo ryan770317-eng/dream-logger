@@ -44,7 +44,7 @@ ${transcript}
 - 請用繁體中文回答`;
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -54,7 +54,14 @@ ${transcript}
       return NextResponse.json({ error: 'AI 回應格式錯誤' }, { status: 500 });
     }
 
-    const analysis = JSON.parse(content.text);
+    const rawText = content.text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+    let analysis;
+    try {
+      analysis = JSON.parse(rawText);
+    } catch {
+      console.error('JSON parse error, raw text:', rawText);
+      return NextResponse.json({ error: 'AI 回應格式錯誤', detail: 'Invalid JSON' }, { status: 500 });
+    }
     return NextResponse.json(analysis);
   } catch (error) {
     console.error('Analysis error:', error);
