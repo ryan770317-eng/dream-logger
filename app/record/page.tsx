@@ -80,7 +80,8 @@ export default function RecordPage() {
       });
       if (!analyzeRes.ok) {
         const errData = await analyzeRes.json().catch(() => ({}));
-        throw new Error(errData.error || '夢境分析失敗');
+        const detail = errData.detail ? ` (${errData.detail})` : '';
+        throw new Error((errData.error || '夢境分析失敗') + detail);
       }
       const analysis: DreamAnalysis = await analyzeRes.json();
 
