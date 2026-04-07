@@ -3,29 +3,39 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 
 interface RecordButtonProps {
-  onSpeechResult: (transcript: string) => void;
+  onRecordingComplete: (blob: Blob, duration: number) => void;
   disabled?: boolean;
   compact?: boolean;
 }
 
-export default function RecordButton({ onSpeechResult, disabled, compact }: RecordButtonProps) {
+function getSupportedMimeType(): string {
+  const types = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/ogg;codecs=opus',
+    '',
+  ];
+  for (const type of types) {
+    if (!type || MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return '';
+}
+
+export default function RecordButton({ onRecordingComplete, disabled, compact }: RecordButtonProps) {
   const [isRecording, setIsRecording] = useState(false);
-  const [liveText, setLiveText] = useState('');
   const [duration, setDuration] = useState(0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null);
-  const transcriptRef = useRef('');
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
   const startTimeRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Tracks whether the user intentionally stopped — prevents iOS auto-restart
-  const stoppedByUserRef = useRef(false);
-  // Prevents double alert when onerror fires before onend
-  const errorFiredRef = useRef(false);
 
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      recognitionRef.current?.abort();
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
     };
   }, []);
 
@@ -35,104 +45,44 @@ export default function RecordButton({ onSpeechResult, disabled, compact }: Reco
     return `${m}:${String(s).padStart(2, '0')}`;
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getSpeechRec = () => (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = getSupportedMimeType();
+      const options = mimeType ? { mimeType } : {};
+      const mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
 
-  const createAndStartRecognition = useCallback(() => {
-    const SpeechRec = getSpeechRec();
-    if (!SpeechRec) return;
-
-    const recognition = new SpeechRec();
-    recognition.lang = 'zh-TW';
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognitionRef.current = recognition;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    recognition.onresult = (event: any) => {
-      let text = '';
-      for (let i = 0; i < event.results.length; i++) {
-        text += event.results[i][0].transcript;
-      }
-      transcriptRef.current = text;
-      setLiveText(text);
-    };
-
-    recognition.onend = () => {
-      // iOS: auto-restart if user hasn't clicked stop
-      if (!stoppedByUserRef.current) {
-        try {
-          recognitionRef.current?.start();
-        } catch {
-          // Already started — ignore
-        }
-        return;
-      }
-
-      // User clicked stop — finalise
-      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-      setDuration(0);
-      setIsRecording(false);
-      const final = transcriptRef.current.trim();
-      setLiveText('');
-
-      if (final) {
-        onSpeechResult(final);
-      } else if (!errorFiredRef.current) {
-        alert('沒有偵測到語音，請重新錄製');
-      }
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    recognition.onerror = (event: any) => {
-      if (event.error === 'aborted') return;
-      errorFiredRef.current = true;
-      console.error('Speech error:', event.error);
-
-      const messages: Record<string, string> = {
-        'not-allowed': '麥克風權限被拒絕，請在瀏覽器設定中允許',
-        'network': '網路錯誤，請確認連線後再試',
-        'no-speech': '',      // iOS常見，靜默處理，onend會重啟
-        'audio-capture': '找不到麥克風裝置',
-        'service-not-allowed': '語音辨識服務不可用，請使用 Chrome 或 Safari',
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
-      const msg = messages[event.error];
-      if (msg === undefined) {
-        alert('語音識別錯誤：' + event.error);
-      } else if (msg) {
-        alert(msg);
-      }
-    };
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        const elapsed = Math.round((Date.now() - startTimeRef.current) / 1000);
+        const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' });
+        setDuration(0);
+        setIsRecording(false);
+        onRecordingComplete(blob, elapsed);
+      };
 
-    recognition.start();
-  }, [onSpeechResult]);
-
-  const startRecording = useCallback(() => {
-    const SpeechRec = getSpeechRec();
-    if (!SpeechRec) {
-      alert('瀏覽器不支援語音識別，請使用 Chrome 或 Safari');
-      return;
+      mediaRecorder.start(250);
+      startTimeRef.current = Date.now();
+      setDuration(0);
+      setIsRecording(true);
+      timerRef.current = setInterval(() => {
+        setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
+      }, 500);
+    } catch (err) {
+      console.error('Mic error:', err);
+      alert('無法存取麥克風，請確認瀏覽器已授予麥克風權限');
     }
-
-    stoppedByUserRef.current = false;
-    errorFiredRef.current = false;
-    transcriptRef.current = '';
-
-    startTimeRef.current = Date.now();
-    setDuration(0);
-    setLiveText('');
-    timerRef.current = setInterval(() => {
-      setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
-    }, 500);
-
-    createAndStartRecognition();
-    setIsRecording(true);
-  }, [createAndStartRecognition]);
+  }, [onRecordingComplete]);
 
   const stopRecording = useCallback(() => {
-    stoppedByUserRef.current = true;
-    recognitionRef.current?.stop();
+    mediaRecorderRef.current?.stop();
   }, []);
 
   const handleClick = useCallback(() => {
@@ -179,12 +129,6 @@ export default function RecordButton({ onSpeechResult, disabled, compact }: Reco
       <p className="text-sm mono" style={{ color: isRecording ? 'var(--danger)' : 'var(--muted)' }}>
         {isRecording ? '▶ 錄音中 · 再點一下停止' : compact ? '點擊錄製' : '點擊開始，再點停止'}
       </p>
-
-      {isRecording && liveText && (
-        <div className="panel px-4 py-3 w-full max-w-xs">
-          <p className="text-sm text-center" style={{ color: 'var(--muted)' }}>{liveText}</p>
-        </div>
-      )}
     </div>
   );
 }
