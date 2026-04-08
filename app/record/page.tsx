@@ -114,11 +114,15 @@ export default function RecordPage() {
     if (!userId || !previewData) return;
     setIsSaving(true);
     try {
+      // Strip undefined values — Firestore does not accept undefined fields
+      const cleanedAnalysis = Object.fromEntries(
+        Object.entries(editedAnalysis).filter(([, v]) => v !== undefined && v !== '')
+      );
       await addDoc(collection(db, 'dreams'), {
         userId,
         createdAt: serverTimestamp(),
         transcript: editedTranscript,
-        ...editedAnalysis,
+        ...cleanedAnalysis,
       });
       setRecordings((prev) => prev.filter((r) => r.id !== previewData.recordingId));
       setPreviewData(null);
