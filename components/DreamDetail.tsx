@@ -286,26 +286,24 @@ export default function DreamDetail({ dream }: DreamDetailProps) {
 
       {/* 複製分析卡 */}
       <div className="rounded-2xl border border-gray-700 p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-white text-sm font-medium">夢境分析卡</h3>
-            <p className="text-gray-500 text-xs mt-0.5">複製後貼給任何 AI，即可獲得夢境解析</p>
-          </div>
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all shrink-0"
-            style={{
-              background: copied ? 'rgba(74,222,128,0.15)' : 'var(--accent)',
-              color: copied ? 'rgb(74,222,128)' : '#0a0a08',
-              border: copied ? '1px solid rgba(74,222,128,0.4)' : 'none',
-            }}
-          >
-            {copied ? '✓ 已複製' : '📋 複製分析卡'}
-          </button>
+        <div>
+          <h3 className="text-white text-sm font-medium">夢境分析卡</h3>
+          <p className="text-gray-500 text-xs mt-0.5">複製後貼給任何 AI，即可獲得夢境解析</p>
         </div>
         <p className="text-gray-400 text-xs leading-relaxed">
           將分析卡貼到任何一個 AI 模型，就能產出你的夢境分析，快去看看你的夢跟你說了什麼吧！
         </p>
+        <button
+          onClick={handleCopy}
+          className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl text-sm font-medium transition-all"
+          style={{
+            background: copied ? 'rgba(74,222,128,0.15)' : 'var(--accent)',
+            color: copied ? 'rgb(74,222,128)' : '#0a0a08',
+            border: copied ? '1px solid rgba(74,222,128,0.4)' : 'none',
+          }}
+        >
+          {copied ? '✓ 已複製' : '📋 複製分析卡'}
+        </button>
       </div>
 
       {/* 事後驗證 */}
