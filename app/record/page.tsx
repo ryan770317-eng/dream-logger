@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getNickname, clearNickname } from '@/lib/auth';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase';
 import RecordButton from '@/components/RecordButton';
 import PreviewModal from '@/components/PreviewModal';
 import { DreamAnalysis } from '@/lib/types';
+import { saveRecording, loadRecordings, deleteRecording } from '@/lib/recordingDb';
 
 interface PendingRecording {
   id: string;
@@ -48,6 +49,7 @@ export default function RecordPage() {
   const [recordings, setRecordings] = useState<PendingRecording[]>([]);
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -56,11 +58,46 @@ export default function RecordPage() {
     else setUserId(nick);
   }, [router]);
 
+  // Restore recordings from IndexedDB on mount
+  useEffect(() => {
+    loadRecordings().then((saved) => {
+      if (saved.length > 0) {
+        setRecordings((prev) => {
+          const existingIds = new Set(prev.map((r) => r.id));
+          const newOnes = saved
+            .filter((s) => !existingIds.has(s.id))
+            .map((s) => ({ ...s, status: 'pending' as const }));
+          return [...newOnes, ...prev];
+        });
+      }
+    }).catch(() => {});
+  }, []);
+
   const handleRecordingComplete = (blob: Blob, duration: number) => {
+    const id = String(Date.now());
+    const timestamp = new Date();
     setRecordings((prev) => [
-      { id: String(Date.now()), blob, timestamp: new Date(), duration, status: 'pending' },
+      { id, blob, timestamp, duration, status: 'pending' },
       ...prev,
     ]);
+    saveRecording(id, blob, timestamp, duration).catch(() => {});
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const id = String(Date.now());
+    const timestamp = new Date();
+    // Estimate duration from file size (rough: ~16kbps for webm/opus)
+    const estimatedDuration = Math.round(file.size / 2000);
+    const blob = new Blob([file], { type: file.type });
+    setRecordings((prev) => [
+      { id, blob, timestamp, duration: estimatedDuration, status: 'pending' },
+      ...prev,
+    ]);
+    saveRecording(id, blob, timestamp, estimatedDuration).catch(() => {});
+    // Reset input so same file can be re-selected
+    e.target.value = '';
   };
 
   const handleAnalyze = async (id: string) => {
@@ -110,11 +147,15 @@ export default function RecordPage() {
     }
   };
 
+  const handleDelete = (id: string) => {
+    setRecordings((prev) => prev.filter((r) => r.id !== id));
+    deleteRecording(id).catch(() => {});
+  };
+
   const handleSave = async (editedAnalysis: DreamAnalysis, editedTranscript: string) => {
     if (!userId || !previewData) return;
     setIsSaving(true);
     try {
-      // Strip undefined values — Firestore does not accept undefined fields
       const cleanedAnalysis = Object.fromEntries(
         Object.entries(editedAnalysis).filter(([, v]) => v !== undefined && v !== '')
       );
@@ -124,7 +165,7 @@ export default function RecordPage() {
         transcript: editedTranscript,
         ...cleanedAnalysis,
       });
-      setRecordings((prev) => prev.filter((r) => r.id !== previewData.recordingId));
+      handleDelete(previewData.recordingId);
       setPreviewData(null);
       router.push('/dreams');
     } catch {
@@ -167,11 +208,41 @@ export default function RecordPage() {
               <p className="text-sm" style={{ color: 'var(--muted)' }}>點擊麥克風，說出你的夢</p>
             </div>
             <RecordButton onRecordingComplete={handleRecordingComplete} />
+            <div className="flex flex-col items-center gap-2 mt-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs px-4 py-2 rounded-lg"
+                style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}
+              >
+                上傳音檔
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-5 pt-5">
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center gap-3">
               <RecordButton onRecordingComplete={handleRecordingComplete} compact />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs px-4 py-2 rounded-lg"
+                style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}
+              >
+                上傳音檔
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
             </div>
             <div className="space-y-3">
               <h2 className="text-xs mono px-1" style={{ color: 'var(--muted)' }}>
@@ -182,7 +253,7 @@ export default function RecordPage() {
                   key={rec.id}
                   rec={rec}
                   onAnalyze={handleAnalyze}
-                  onDelete={(id) => setRecordings((prev) => prev.filter((r) => r.id !== id))}
+                  onDelete={handleDelete}
                 />
               ))}
             </div>
