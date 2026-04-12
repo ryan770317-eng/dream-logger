@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ transcript: result.text });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.error('Transcription error:', msg);
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error('Transcription error:', msg, stack);
     return NextResponse.json({ error: '語音辨識失敗', detail: msg }, { status: 500 });
   }
 }

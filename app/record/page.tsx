@@ -233,11 +233,28 @@ function RecordingCard({
           </span>
         </div>
         {rec.status === 'error' && rec.error && (
-          <p className="text-xs mt-1 truncate" style={{ color: 'var(--danger)' }}>{rec.error}</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--danger)', wordBreak: 'break-all' }}>{rec.error}</p>
         )}
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={() => {
+            const url = URL.createObjectURL(rec.blob);
+            const a = document.createElement('a');
+            const ext = rec.blob.type.includes('mp4') || rec.blob.type.includes('m4a') ? 'm4a'
+              : rec.blob.type.includes('ogg') ? 'ogg' : 'webm';
+            a.href = url;
+            a.download = `dream-${rec.id}.${ext}`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+          className="text-xs px-2 py-1.5 rounded-lg"
+          style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}
+          title="下載音檔"
+        >
+          ⬇
+        </button>
         {rec.status === 'pending' && (
           <button onClick={() => onAnalyze(rec.id)} className="btn-accent text-xs px-3 py-1.5">
             辨識
