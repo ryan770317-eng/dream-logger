@@ -109,19 +109,30 @@ export default function RecordPage() {
     );
 
     try {
-      // Step 1: Groq Whisper transcription
-      const formData = new FormData();
+      // Step 1: Get API key then call Groq directly (bypasses Vercel 4.5MB body limit)
+      const keyRes = await fetch('/api/transcribe-key');
+      if (!keyRes.ok) throw new Error('無法取得 API 金鑰');
+      const { key: groqKey } = await keyRes.json();
+
       const ext = rec.blob.type.includes('mp4') || rec.blob.type.includes('m4a') ? 'audio.m4a'
         : rec.blob.type.includes('ogg') ? 'audio.ogg'
         : 'audio.webm';
-      formData.append('audio', rec.blob, ext);
+      const formData = new FormData();
+      formData.append('file', rec.blob, ext);
+      formData.append('model', 'whisper-large-v3-turbo');
+      formData.append('language', 'zh');
+      formData.append('response_format', 'json');
 
-      const transcribeRes = await fetch('/api/transcribe', { method: 'POST', body: formData });
+      const transcribeRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${groqKey}` },
+        body: formData,
+      });
       if (!transcribeRes.ok) {
         const e = await transcribeRes.json().catch(() => ({}));
-        throw new Error((e.error || '語音辨識失敗') + (e.detail ? ` (${e.detail})` : ''));
+        throw new Error((e.error?.message || e.error || '語音辨識失敗'));
       }
-      const { transcript } = await transcribeRes.json();
+      const { text: transcript } = await transcribeRes.json();
 
       // Step 2: Claude analysis
       const analyzeRes = await fetch('/api/analyze', {
