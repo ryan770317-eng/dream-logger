@@ -58,7 +58,6 @@ export default function RecordPage() {
     else setUserId(nick);
   }, [router]);
 
-  // Restore recordings from IndexedDB on mount
   useEffect(() => {
     loadRecordings().then((saved) => {
       if (saved.length > 0) {
@@ -88,7 +87,6 @@ export default function RecordPage() {
     if (!file) return;
     const id = String(Date.now());
     const timestamp = new Date();
-    // Estimate duration from file size (rough: ~16kbps for webm/opus)
     const estimatedDuration = Math.round(file.size / 2000);
     const blob = new Blob([file], { type: file.type });
     setRecordings((prev) => [
@@ -96,7 +94,6 @@ export default function RecordPage() {
       ...prev,
     ]);
     saveRecording(id, blob, timestamp, estimatedDuration).catch(() => {});
-    // Reset input so same file can be re-selected
     e.target.value = '';
   };
 
@@ -109,7 +106,6 @@ export default function RecordPage() {
     );
 
     try {
-      // Step 1: Get API key then call Groq directly (bypasses Vercel 4.5MB body limit)
       const keyRes = await fetch('/api/transcribe-key');
       if (!keyRes.ok) throw new Error('無法取得 API 金鑰');
       const { key: groqKey } = await keyRes.json();
@@ -134,7 +130,6 @@ export default function RecordPage() {
       }
       const { text: transcript } = await transcribeRes.json();
 
-      // Step 2: Claude analysis
       const analyzeRes = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -180,7 +175,7 @@ export default function RecordPage() {
       setPreviewData(null);
       router.push('/dreams');
     } catch {
-      alert('儲存失敗，請稍後再試');
+      alert('封存失敗，請稍後再試');
     } finally {
       setIsSaving(false);
     }
@@ -193,72 +188,162 @@ export default function RecordPage() {
 
   if (!userId) return null;
 
+  const hasQueue = recordings.length > 0;
+  const crewLabel = userId.toUpperCase();
+
   return (
     <div className="min-h-screen flex flex-col">
+      {/* App header */}
       <header
         className="flex items-center justify-between px-5 py-3 sticky top-0 z-20"
         style={{
-          background: 'rgba(8,8,18,0.85)',
-          borderBottom: '1px solid var(--border)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
+          background: 'rgba(6,6,15,0.6)',
+          borderBottom: '1px solid var(--hair)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
         }}
       >
-        <button onClick={() => router.push('/dreams')} className="text-sm" style={{ color: 'var(--muted)' }}>
-          我的夢境
+        <button
+          onClick={() => router.push('/dreams')}
+          className="zh"
+          style={{ fontSize: 12.5, color: 'var(--ink-dim)', letterSpacing: '0.04em' }}
+        >
+          ⌕ 任 務 檔 案
         </button>
-        <span className="text-sm mono" style={{ color: 'var(--accent)' }}>🌙 {userId}</span>
-        <button onClick={handleLogout} className="text-sm" style={{ color: 'var(--muted)' }}>登出</button>
+        <span
+          className="mono"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 12,
+            color: 'var(--moon)',
+            fontWeight: 500,
+            letterSpacing: '0.08em',
+          }}
+        >
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: 'var(--moon)',
+              boxShadow: '0 0 8px var(--moon-glow)',
+            }}
+          />
+          CREW · {crewLabel}
+        </span>
+        <button
+          onClick={handleLogout}
+          className="zh"
+          style={{ fontSize: 12.5, color: 'var(--ink-dim)', letterSpacing: '0.04em' }}
+        >
+          斷 線
+        </button>
       </header>
 
-      <main className="flex-1 flex flex-col px-4 pb-8">
-        {recordings.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-6">
-            <div className="text-center mb-2">
-              <h1 className="text-2xl font-semibold mb-1" style={{ color: 'var(--text)' }}>記錄夢境</h1>
-              <p className="text-sm" style={{ color: 'var(--muted)' }}>點擊麥克風，說出你的夢</p>
-            </div>
-            <RecordButton onRecordingComplete={handleRecordingComplete} />
-            <div className="flex flex-col items-center gap-2 mt-2">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="text-xs px-4 py-2 rounded-lg"
-                style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}
-              >
-                上傳音檔
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="audio/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </div>
+      <main className="flex-1 flex flex-col items-center px-5 pt-8 pb-10 gap-6 w-full max-w-md mx-auto">
+        {/* Record head */}
+        <div className="text-center">
+          <h2
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 300,
+              fontSize: 24,
+              color: 'var(--ink)',
+              margin: 0,
+              letterSpacing: '-0.01em',
+            }}
+          >
+            開啟新的<b style={{ fontWeight: 600, color: 'var(--moon)' }}>，探索紀錄。</b>
+          </h2>
+          <div
+            className="zh"
+            style={{
+              fontWeight: 300,
+              fontSize: 13,
+              color: 'var(--ink-dim)',
+              marginTop: 6,
+              letterSpacing: '0.3em',
+              paddingLeft: '0.3em',
+            }}
+          >
+            按下 REC，開始擷取
           </div>
-        ) : (
-          <div className="flex flex-col gap-5 pt-5">
-            <div className="flex flex-col items-center gap-3">
-              <RecordButton onRecordingComplete={handleRecordingComplete} compact />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="text-xs px-4 py-2 rounded-lg"
-                style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}
-              >
-                上傳音檔
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="audio/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
+          <span
+            className="mono"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              marginTop: 12,
+              fontSize: 9.5,
+              color: 'var(--muted)',
+              letterSpacing: '0.3em',
+              textTransform: 'uppercase',
+            }}
+          >
+            <span style={{ width: 18, height: 1, background: 'var(--whisper)' }} />
+            系 統 就 緒 · READY
+            <span style={{ width: 18, height: 1, background: 'var(--whisper)' }} />
+          </span>
+        </div>
+
+        <RecordButton onRecordingComplete={handleRecordingComplete} compact={hasQueue} />
+
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="zh"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 12,
+            color: 'var(--ink-dim)',
+            letterSpacing: '0.08em',
+            padding: '9px 18px',
+            border: '1px solid var(--border-soft)',
+            borderRadius: 100,
+            background: 'transparent',
+            transition: 'all 0.25s',
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+            <path d="M12 15V3m0 0l-4 4m4-4l4 4" />
+            <path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+          </svg>
+          匯 入 音 檔 / UPLOAD
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="audio/*"
+          onChange={handleFileUpload}
+          className="hidden"
+        />
+
+        {hasQueue && (
+          <>
+            <div
+              className="mono"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                width: '100%',
+                marginTop: 4,
+                fontSize: 10,
+                color: 'var(--muted)',
+                letterSpacing: '0.3em',
+                textTransform: 'uppercase',
+              }}
+            >
+              <span style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
+              <span>待 處 理 佇 列 · QUEUE {String(recordings.length).padStart(2, '0')}</span>
+              <span style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
             </div>
-            <div className="space-y-3">
-              <h2 className="text-xs mono px-1" style={{ color: 'var(--muted)' }}>
-                待分析錄音 ({recordings.length})
-              </h2>
+
+            <div className="flex flex-col gap-2.5 w-full">
               {recordings.map((rec) => (
                 <RecordingCard
                   key={rec.id}
@@ -268,7 +353,7 @@ export default function RecordPage() {
                 />
               ))}
             </div>
-          </div>
+          </>
         )}
       </main>
 
@@ -294,70 +379,107 @@ function RecordingCard({
   onAnalyze: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
-  return (
-    <div
-      className="panel p-4 flex items-center gap-3"
-      style={rec.status === 'error' ? { borderColor: 'rgba(248,113,113,0.3)', background: 'rgba(248,113,113,0.06)' } : {}}
-    >
-      <div className="shrink-0">
-        {rec.status === 'pending' && <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--accent)' }} />}
-        {rec.status === 'processing' && <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: 'var(--sky)' }} />}
-        {rec.status === 'error' && <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--danger)' }} />}
-      </div>
+  const dotClass = rec.status === 'processing' ? 'rec-dot processing'
+    : rec.status === 'error' ? 'rec-dot error'
+    : 'rec-dot';
 
+  const statusText = rec.status === 'processing' ? '傳 輸 中 / TRANSMITTING'
+    : rec.status === 'error' ? '錯 誤 / ERROR'
+    : '待 解 析 / READY';
+
+  const download = () => {
+    const url = URL.createObjectURL(rec.blob);
+    const a = document.createElement('a');
+    const ext = rec.blob.type.includes('mp4') || rec.blob.type.includes('m4a') ? 'm4a'
+      : rec.blob.type.includes('ogg') ? 'ogg' : 'webm';
+    a.href = url;
+    a.download = `dream-${rec.id}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className={`rec-card ${rec.status === 'error' ? 'error' : ''}`}>
+      <span className={dotClass} />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm mono font-medium" style={{ color: 'var(--text)' }}>
-            {formatTimestamp(rec.timestamp)}
-          </span>
-          <span className="text-xs mono px-1.5 py-0.5 rounded" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border)' }}>
-            {formatDuration(rec.duration)}
-          </span>
+        <div
+          style={{
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 500,
+            fontSize: 14,
+            color: 'var(--ink)',
+          }}
+        >
+          {formatTimestamp(rec.timestamp)}
+        </div>
+        <div
+          className="mono"
+          style={{
+            fontSize: 10,
+            color: 'var(--muted)',
+            letterSpacing: '0.12em',
+            marginTop: 3,
+          }}
+        >
+          {formatDuration(rec.duration)} · {statusText}
         </div>
         {rec.status === 'error' && rec.error && (
-          <p className="text-xs mt-1" style={{ color: 'var(--danger)', wordBreak: 'break-all' }}>{rec.error}</p>
+          <p
+            style={{
+              fontSize: 11,
+              color: 'var(--danger)',
+              marginTop: 4,
+              wordBreak: 'break-all',
+              fontFamily: 'Noto Sans TC, sans-serif',
+            }}
+          >
+            {rec.error}
+          </p>
         )}
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
-        <button
-          onClick={() => {
-            const url = URL.createObjectURL(rec.blob);
-            const a = document.createElement('a');
-            const ext = rec.blob.type.includes('mp4') || rec.blob.type.includes('m4a') ? 'm4a'
-              : rec.blob.type.includes('ogg') ? 'ogg' : 'webm';
-            a.href = url;
-            a.download = `dream-${rec.id}.${ext}`;
-            a.click();
-            URL.revokeObjectURL(url);
-          }}
-          className="text-xs px-2 py-1.5 rounded-lg"
-          style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}
-          title="下載音檔"
-        >
-          ⬇
-        </button>
-        {rec.status === 'pending' && (
-          <button onClick={() => onAnalyze(rec.id)} className="btn-accent text-xs px-3 py-1.5">
-            辨識
-          </button>
-        )}
-        {rec.status === 'processing' && (
-          <span className="text-xs mono" style={{ color: 'var(--sky)' }}>辨識中...</span>
-        )}
-        {rec.status === 'error' && (
-          <button
-            onClick={() => onAnalyze(rec.id)}
-            className="text-xs px-3 py-1.5 rounded-lg"
-            style={{ background: 'var(--danger-dim)', color: 'var(--danger)', border: '1px solid rgba(248,113,113,0.3)' }}
-          >
-            重試
-          </button>
-        )}
-        {rec.status !== 'processing' && (
-          <button onClick={() => onDelete(rec.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-sm" style={{ color: 'var(--muted)' }}>
-            ✕
-          </button>
+        {rec.status === 'processing' ? (
+          <span className="processing-label">解析中</span>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="btn-icon"
+              title="下載音檔"
+              onClick={download}
+            >
+              ↓
+            </button>
+            {rec.status === 'pending' && (
+              <button type="button" className="btn-gold-sm" onClick={() => onAnalyze(rec.id)}>
+                解　析
+              </button>
+            )}
+            {rec.status === 'error' && (
+              <button
+                type="button"
+                onClick={() => onAnalyze(rec.id)}
+                className="btn-gold-sm"
+                style={{
+                  background: 'rgba(224,138,136,0.15)',
+                  color: 'var(--danger)',
+                  border: '1px solid rgba(224,138,136,0.4)',
+                  boxShadow: 'none',
+                }}
+              >
+                重　試
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn-icon"
+              title="刪除"
+              onClick={() => onDelete(rec.id)}
+            >
+              ✕
+            </button>
+          </>
         )}
       </div>
     </div>

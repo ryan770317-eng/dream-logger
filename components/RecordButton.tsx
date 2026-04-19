@@ -42,7 +42,7 @@ export default function RecordButton({ onRecordingComplete, disabled, compact }:
   const formatDuration = (secs: number) => {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
-    return `${m}:${String(s).padStart(2, '0')}`;
+    return `${m} : ${String(s).padStart(2, '0')}`;
   };
 
   const startRecording = useCallback(async () => {
@@ -90,45 +90,64 @@ export default function RecordButton({ onRecordingComplete, disabled, compact }:
     else startRecording();
   }, [isRecording, startRecording, stopRecording]);
 
-  const btnSize = compact ? 'w-24 h-24' : 'w-40 h-40';
-  const iconSize = compact ? 'text-3xl' : 'text-5xl';
-
   return (
-    <div className="flex flex-col items-center gap-6 w-full">
-      <button
-        onClick={handleClick}
-        disabled={disabled}
-        className={`
-          ${btnSize} rounded-full font-semibold
-          flex items-center justify-center select-none touch-none
-          transition-all duration-150 shadow-2xl relative
-          ${isRecording ? 'scale-110' : 'hover:brightness-110 active:scale-95'}
-          ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
-        `}
-        style={isRecording
-          ? { background: 'var(--danger)', color: 'white', boxShadow: '0 0 0 4px rgba(248,113,113,0.3), 0 0 32px rgba(248,113,113,0.4)' }
-          : { background: 'var(--accent)', color: '#0a0a08', boxShadow: '0 0 0 1px rgba(247,247,87,0.5), 0 8px 32px rgba(247,247,87,0.3)' }
-        }
-      >
-        {isRecording && (
-          <span className="absolute inset-0 rounded-full animate-ping" style={{ background: 'rgba(248,113,113,0.2)' }} />
-        )}
-        {isRecording ? (
-          <span className="flex flex-col items-center gap-1.5 relative z-10">
-            <span className="w-4 h-4 rounded-sm animate-pulse" style={{ background: 'white' }} />
-            <span className="text-xs mono font-bold">{formatDuration(duration)}</span>
-          </span>
-        ) : (
-          <span className="flex flex-col items-center gap-1.5">
-            <span className={iconSize}>🎙️</span>
-            {!compact && <span className="text-sm font-medium">點擊錄音</span>}
-          </span>
-        )}
-      </button>
+    <div className="flex flex-col items-center gap-3 w-full">
+      <div className={`mic-aura ${compact ? 'compact' : ''}`}>
+        <span className="ring" />
+        <span className="ring" />
+        <span className="ring" />
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={disabled}
+          aria-label={isRecording ? 'stop' : 'record'}
+          className={`mic-btn ${compact ? 'compact' : ''} ${isRecording ? 'recording' : ''}`}
+        >
+          <span className="rec-label">{isRecording ? 'STOP' : 'REC'}</span>
+        </button>
+      </div>
 
-      <p className="text-sm mono" style={{ color: isRecording ? 'var(--danger)' : 'var(--muted)' }}>
-        {isRecording ? '▶ 錄音中 · 再點一下停止' : compact ? '點擊錄製' : '點擊開始，再點停止'}
-      </p>
+      {isRecording ? (
+        <>
+          <div
+            className="mono"
+            style={{
+              fontWeight: 500,
+              fontSize: compact ? 20 : 28,
+              color: 'var(--ink)',
+              letterSpacing: '0.1em',
+            }}
+          >
+            {formatDuration(duration)}
+          </div>
+          <div className="rec-waveform" aria-hidden>
+            <span /><span /><span /><span /><span /><span /><span /><span /><span /><span /><span />
+          </div>
+          <div
+            className="mono"
+            style={{
+              fontSize: 10,
+              color: 'var(--muted)',
+              letterSpacing: '0.35em',
+              textTransform: 'uppercase',
+            }}
+          >
+            <span style={{ color: 'var(--ink-dim)' }}>TAP</span> · 停 止 擷 取
+          </div>
+        </>
+      ) : (
+        <div
+          className="mono"
+          style={{
+            fontSize: 10,
+            color: 'var(--muted)',
+            letterSpacing: '0.35em',
+            textTransform: 'uppercase',
+          }}
+        >
+          <span style={{ color: 'var(--ink-dim)' }}>TAP</span> · 開 始 擷 取
+        </div>
+      )}
     </div>
   );
 }

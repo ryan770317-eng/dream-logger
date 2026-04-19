@@ -50,15 +50,15 @@ export default function DreamsPage() {
     }
   };
 
-  const allTags = Array.from(new Set(dreams.flatMap((d) => d.tags)));
+  const allTags = Array.from(new Set(dreams.flatMap((d) => d.tags ?? [])));
 
   const filtered = dreams.filter((d) => {
     const matchSearch =
       !search ||
-      d.summary.includes(search) ||
+      d.summary?.includes(search) ||
       d.transcript?.includes(search) ||
-      d.tags.some((t) => t.includes(search));
-    const matchTag = !activeTag || d.tags.includes(activeTag);
+      (d.tags ?? []).some((t) => t.includes(search));
+    const matchTag = !activeTag || (d.tags ?? []).includes(activeTag);
     return matchSearch && matchTag;
   });
 
@@ -66,52 +66,84 @@ export default function DreamsPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header */}
       <header
         className="flex items-center justify-between px-5 py-3 sticky top-0 z-20"
         style={{
-          background: 'rgba(8,8,18,0.85)',
-          borderBottom: '1px solid var(--border)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
+          background: 'rgba(6,6,15,0.65)',
+          borderBottom: '1px solid var(--hair)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
         }}
       >
         <button
           onClick={() => router.push('/record')}
-          className="text-sm transition-colors"
-          style={{ color: 'var(--muted)' }}
+          className="zh"
+          style={{ color: 'var(--ink-dim)', fontSize: 12.5, letterSpacing: '0.04em' }}
         >
-          ← 錄音
+          ← 返 回 紀 錄
         </button>
-        <h1 className="font-semibold" style={{ color: 'var(--text)' }}>我的夢境</h1>
-        <span className="text-sm mono" style={{ color: 'var(--muted)' }}>
-          {dreams.length} 則
+        <span
+          style={{
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 500,
+            fontSize: 15,
+            color: 'var(--ink)',
+            letterSpacing: '0.02em',
+          }}
+        >
+          <b
+            className="mono"
+            style={{
+              color: 'var(--moon)',
+              fontWeight: 600,
+              marginRight: 6,
+              fontSize: 11,
+              letterSpacing: '0.2em',
+            }}
+          >
+            ARC
+          </b>
+          探 索 檔 案
+        </span>
+        <span
+          className="mono"
+          style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: '0.25em' }}
+        >
+          {String(dreams.length).padStart(3, '0')} LOGS
         </span>
       </header>
 
-      {/* Search */}
       <div
-        className="px-4 pt-3 pb-2 sticky z-10"
-        style={{ top: '49px', background: 'rgba(8,8,18,0.85)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
+        className="px-5 pt-3 pb-2 sticky z-10"
+        style={{
+          top: 49,
+          background: 'rgba(6,6,15,0.65)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+        }}
       >
         <input
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="搜尋夢境..."
-          className="input-field text-sm"
+          placeholder="檢索檔案 / QUERY ⋯"
+          className="search-input"
         />
       </div>
 
-      {/* Tags */}
       {allTags.length > 0 && (
         <div
-          className="flex gap-2 overflow-x-auto px-4 pb-3 sticky z-10"
-          style={{ top: '105px', background: 'rgba(8,8,18,0.85)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
+          className="flex gap-1.5 overflow-x-auto px-5 pb-3 no-scrollbar sticky z-10"
+          style={{
+            top: 103,
+            background: 'rgba(6,6,15,0.65)',
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
+          }}
         >
           <button
             onClick={() => setActiveTag('')}
-            className={`shrink-0 tag-pill${!activeTag ? ' active' : ''}`}
+            className={`tag-pill${!activeTag ? ' active' : ''}`}
           >
             全部
           </button>
@@ -119,7 +151,7 @@ export default function DreamsPage() {
             <button
               key={tag}
               onClick={() => setActiveTag(tag === activeTag ? '' : tag)}
-              className={`shrink-0 tag-pill${activeTag === tag ? ' active' : ''}`}
+              className={`tag-pill${activeTag === tag ? ' active' : ''}`}
             >
               {tag}
             </button>
@@ -127,38 +159,86 @@ export default function DreamsPage() {
         </div>
       )}
 
-      {/* Content */}
-      <main className="flex-1 px-4 pb-6">
+      <main className="flex-1 px-4 pb-24">
         {loading ? (
           <div className="flex justify-center items-center h-40">
             <span className="mono text-sm animate-pulse" style={{ color: 'var(--muted)' }}>
-              載入中...
+              同 步 中 ⋯
             </span>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-40 gap-3">
-            <span className="text-4xl">🌫️</span>
-            <p className="text-sm" style={{ color: 'var(--muted)' }}>
-              {dreams.length === 0 ? '還沒有夢境記錄' : '沒有符合的結果'}
-            </p>
+          <div className="flex flex-col items-center justify-center h-48 gap-3 text-center">
+            <span
+              className="mono"
+              style={{
+                fontSize: 10,
+                color: 'var(--muted)',
+                letterSpacing: '0.3em',
+                textTransform: 'uppercase',
+              }}
+            >
+              {dreams.length === 0 ? 'NO LOGS · 無 紀 錄' : 'NO MATCH · 無 符 合 結 果'}
+            </span>
             {dreams.length === 0 && (
               <button
                 onClick={() => router.push('/record')}
-                className="text-sm transition-colors"
-                style={{ color: 'var(--accent)' }}
+                className="btn-primary-sm"
+                style={{ padding: '10px 20px' }}
               >
-                去錄第一個夢 →
+                建 立 首 筆 紀 錄 →
               </button>
             )}
           </div>
         ) : (
-          <div className="space-y-3 mt-3">
-            {filtered.map((dream) => (
-              <DreamCard key={dream.id} dream={dream} />
-            ))}
+          <div className="flex flex-col gap-2.5 mt-2">
+            {filtered.map((dream) => {
+              const originalIndex = dreams.findIndex((d) => d.id === dream.id);
+              const missionIndex = dreams.length - originalIndex;
+              return (
+                <DreamCard key={dream.id} dream={dream} index={missionIndex} />
+              );
+            })}
           </div>
         )}
       </main>
+
+      {/* Bottom dock */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 20,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '6px 12px',
+          background: 'rgba(6,6,15,0.8)',
+          border: '1px solid var(--border-soft)',
+          borderRadius: 100,
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          fontFamily: 'JetBrains Mono, monospace',
+          fontSize: 9.5,
+          letterSpacing: '0.25em',
+          color: 'var(--muted)',
+          textTransform: 'uppercase',
+          zIndex: 30,
+          pointerEvents: 'none',
+        }}
+      >
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: 'var(--moon)',
+            boxShadow: '0 0 8px var(--moon-glow)',
+            animation: 'twinkle 2s infinite',
+          }}
+        />
+        檔 案 庫 · 同 步 完 成 · SYNCED
+      </div>
     </div>
   );
 }

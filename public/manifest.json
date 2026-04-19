@@ -1,11 +1,11 @@
 {
-  "name": "夢境記錄器",
-  "short_name": "夢境",
-  "description": "用語音記錄你的夢境",
+  "name": "夢境探索紀錄 · SOMNIUM",
+  "short_name": "SOMNIUM",
+  "description": "用語音擷取夢境訊號，封存至探索檔案庫",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#080812",
-  "theme_color": "#080812",
+  "background_color": "#06060f",
+  "theme_color": "#06060f",
   "orientation": "portrait",
   "icons": [
     {

@@ -42,7 +42,10 @@ export default function PreviewModal({
     setEdited((prev) => ({ ...prev, [key]: value }));
   };
 
-  const updateArrayField = (key: 'characters' | 'locations' | 'symbols' | 'tags' | 'recentLifeThemes', value: string) => {
+  const updateArrayField = (
+    key: 'characters' | 'locations' | 'symbols' | 'tags' | 'recentLifeThemes',
+    value: string,
+  ) => {
     updateField(key, value.split('、').map((s) => s.trim()).filter(Boolean));
   };
 
@@ -55,297 +58,457 @@ export default function PreviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-h-[92vh] overflow-y-auto bg-gray-900 rounded-t-3xl border-t border-gray-700 p-5">
-        <div className="w-10 h-1 bg-gray-600 rounded-full mx-auto mb-5" />
-        <h2 className="text-white text-xl font-semibold mb-1">確認夢境記錄</h2>
-        <p className="text-gray-400 text-sm mb-5">AI 已分析完成，你可以修改後儲存</p>
+    <div
+      className="fixed inset-0 z-50 flex items-end"
+      style={{ background: 'rgba(4,4,10,0.65)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+    >
+      <div
+        className="w-full max-h-[92vh] overflow-hidden flex flex-col"
+        style={{
+          background: 'linear-gradient(180deg, rgba(16,19,38,0.96) 0%, rgba(10,12,30,0.98) 100%)',
+          border: '1px solid var(--border-soft)',
+          borderTop: '1px solid var(--border)',
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+          boxShadow: '0 -20px 60px rgba(0,0,0,0.5), 0 0 80px rgba(242,217,143,0.08)',
+        }}
+      >
+        <div
+          style={{
+            width: 42,
+            height: 4,
+            borderRadius: 4,
+            background: 'var(--whisper)',
+            margin: '10px auto 4px',
+          }}
+        />
 
-        <div className="space-y-4">
-          {/* Summary */}
-          <Field label="摘要">
-            <textarea
-              value={edited.summary}
-              onChange={(e) => updateField('summary', e.target.value)}
-              rows={2}
-              className="input-field"
-            />
-          </Field>
-
-          {/* Emotion */}
-          <Field label="情緒">
-            <input
-              value={edited.emotion}
-              onChange={(e) => updateField('emotion', e.target.value)}
-              className="input-field"
-            />
-          </Field>
-
-          {/* Lucidity */}
-          <Field label="清醒度">
-            <input
-              value={edited.lucidity}
-              onChange={(e) => updateField('lucidity', e.target.value)}
-              className="input-field"
-            />
-          </Field>
-
-          {/* Characters */}
-          <Field label="人物（用「、」分隔）">
-            <input
-              value={edited.characters.join('、')}
-              onChange={(e) => updateArrayField('characters', e.target.value)}
-              className="input-field"
-            />
-          </Field>
-
-          {/* Locations */}
-          <Field label="地點（用「、」分隔）">
-            <input
-              value={edited.locations.join('、')}
-              onChange={(e) => updateArrayField('locations', e.target.value)}
-              className="input-field"
-            />
-          </Field>
-
-          {/* Symbols */}
-          <Field label="符號/意象（用「、」分隔）">
-            <input
-              value={edited.symbols.join('、')}
-              onChange={(e) => updateArrayField('symbols', e.target.value)}
-              className="input-field"
-            />
-          </Field>
-
-          {/* Numbers */}
-          {edited.numbers.length > 0 && (
-            <Field label="出現的數字">
-              <div className="space-y-2">
-                {edited.numbers.map((n, i) => (
-                  <div key={i} className="bg-gray-800 rounded-xl p-3">
-                    <span className="text-yellow-400 font-bold">{n.value}</span>
-                    <span className="text-gray-400 text-sm ml-2">{n.context}</span>
-                  </div>
-                ))}
-              </div>
-            </Field>
-          )}
-
-          {/* Tags */}
-          <Field label="標籤（用「、」分隔）">
-            <input
-              value={edited.tags.join('、')}
-              onChange={(e) => updateArrayField('tags', e.target.value)}
-              className="input-field"
-            />
-          </Field>
-
-          {/* Transcript toggle */}
-          <button
-            onClick={() => setShowTranscript(!showTranscript)}
-            className="text-gray-400 text-sm underline"
+        <div style={{ padding: '8px 22px 14px', borderBottom: '1px solid var(--hair)' }}>
+          <span
+            className="mono"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 9.5,
+              color: 'var(--moon)',
+              letterSpacing: '0.3em',
+              textTransform: 'uppercase',
+            }}
           >
-            {showTranscript ? '隱藏' : '查看/編輯'} 原始逐字稿
-          </button>
-
-          {showTranscript && (
-            <textarea
-              value={editedTranscript}
-              onChange={(e) => setEditedTranscript(e.target.value)}
-              rows={5}
-              className="input-field text-sm"
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: 'var(--moon)',
+                boxShadow: '0 0 8px var(--moon-glow)',
+                animation: 'twinkle 2s infinite',
+              }}
             />
-          )}
+            ANALYSIS COMPLETE · 請 確 認 封 存
+          </span>
+          <h3
+            style={{
+              fontFamily: 'Inter, Noto Sans TC, sans-serif',
+              fontWeight: 500,
+              fontSize: 17,
+              color: 'var(--ink)',
+              margin: '6px 0 2px',
+            }}
+          >
+            AI 已完成夢境解析
+          </h3>
+          <p
+            className="zh"
+            style={{
+              fontSize: 11.5,
+              color: 'var(--muted)',
+              margin: 0,
+              letterSpacing: '0.04em',
+            }}
+          >
+            可修改後儲存至檔案庫 / EDIT BEFORE ARCHIVE
+          </p>
+        </div>
 
-          {/* 入夢前狀態 */}
-          <div className="border border-gray-700 rounded-2xl overflow-hidden">
+        <div className="flex-1 overflow-y-auto no-scrollbar" style={{ padding: '14px 20px' }}>
+          <div className="flex flex-col gap-3">
+            <div className="field-block ch-sum">
+              <label><span className="dot" /><span className="zh">摘要</span> SUMMARY</label>
+              <textarea
+                value={edited.summary}
+                onChange={(e) => updateField('summary', e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            <div className="field-block ch-emo">
+              <label><span className="dot" /><span className="zh">情緒</span> EMOTION</label>
+              <input
+                value={edited.emotion}
+                onChange={(e) => updateField('emotion', e.target.value)}
+              />
+            </div>
+
+            <div className="field-block ch-lucid">
+              <label><span className="dot" /><span className="zh">清醒度</span> LUCIDITY</label>
+              <input
+                value={edited.lucidity}
+                onChange={(e) => updateField('lucidity', e.target.value)}
+              />
+            </div>
+
+            <div className="field-block ch-entity">
+              <label>
+                <span className="dot" /><span className="zh">人物</span> ENTITIES
+                <span style={{ color: 'var(--whisper)', letterSpacing: '0.05em', textTransform: 'none', marginLeft: 4 }}>
+                  （以「、」分隔）
+                </span>
+              </label>
+              <input
+                value={edited.characters.join('、')}
+                onChange={(e) => updateArrayField('characters', e.target.value)}
+              />
+            </div>
+
+            <div className="field-block ch-loc">
+              <label><span className="dot" /><span className="zh">地點</span> LOCATIONS</label>
+              <input
+                value={edited.locations.join('、')}
+                onChange={(e) => updateArrayField('locations', e.target.value)}
+              />
+            </div>
+
+            <div className="field-block ch-sym">
+              <label><span className="dot" /><span className="zh">符號</span> SYMBOLS</label>
+              <input
+                value={edited.symbols.join('、')}
+                onChange={(e) => updateArrayField('symbols', e.target.value)}
+              />
+            </div>
+
+            {edited.numbers && edited.numbers.length > 0 && (
+              <div className="field-block ch-num">
+                <label><span className="dot" /><span className="zh">數字</span> NUMBERS</label>
+                <div className="flex flex-col gap-1.5">
+                  {edited.numbers.map((n, i) => (
+                    <div key={i} className="number-chip">
+                      <span className="n">{n.value}</span>
+                      <span className="ctx">{n.context}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="field-block ch-tag">
+              <label><span className="dot" /><span className="zh">標籤</span> TAGS</label>
+              <input
+                value={edited.tags.join('、')}
+                onChange={(e) => updateArrayField('tags', e.target.value)}
+              />
+            </div>
+
+            {/* Transcript toggle */}
             <button
               type="button"
-              onClick={() => setShowPreSleep(!showPreSleep)}
-              className="w-full flex items-center justify-between px-4 py-3 text-left"
+              onClick={() => setShowTranscript(!showTranscript)}
+              className="mono"
+              style={{
+                alignSelf: 'flex-start',
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                color: 'var(--ink-dim)',
+                fontSize: 10,
+                letterSpacing: '0.2em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                textUnderlineOffset: 3,
+              }}
             >
-              <span className="text-gray-300 text-sm font-medium">🌙 入夢前狀態</span>
-              <span className="text-xs text-gray-500">{showPreSleep ? '收起 ▲' : '選填，可跳過 ▼'}</span>
+              {showTranscript ? '隱 藏' : '查 看 / 編 輯'} 原 始 逐 字 稿
             </button>
+            {showTranscript && (
+              <textarea
+                value={editedTranscript}
+                onChange={(e) => setEditedTranscript(e.target.value)}
+                rows={5}
+                className="input-field"
+                style={{ fontSize: 12.5, resize: 'vertical' }}
+              />
+            )}
 
-            {showPreSleep && (
-              <div className="px-4 pb-4 space-y-4 border-t border-gray-700/60">
-                <div className="pt-3">
-                  <Field label="睡前身體感受">
-                    <div className="flex flex-wrap gap-2 mt-1">
+            {/* Pre-sleep */}
+            <div className="collapse">
+              <button
+                type="button"
+                className="collapse-head"
+                onClick={() => setShowPreSleep(!showPreSleep)}
+              >
+                <span>
+                  {showPreSleep ? '▾' : '▸'}{' '}
+                  <span className="zh" style={{ fontSize: 11, letterSpacing: '0.08em', color: '#d0d3e3' }}>
+                    入夢前
+                  </span>{' '}
+                  PRE-SLEEP
+                </span>
+                <span className="hint">{showPreSleep ? '收 起' : '選 填 · OPTIONAL'}</span>
+              </button>
+              {showPreSleep && (
+                <div className="collapse-body">
+                  <div>
+                    <div
+                      className="mono"
+                      style={{
+                        fontSize: 9,
+                        color: 'var(--muted)',
+                        letterSpacing: '0.22em',
+                        marginBottom: 6,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      身體狀態
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
                       {PRE_SLEEP_BODY_OPTIONS.map((opt) => (
                         <button
                           key={opt}
                           type="button"
                           onClick={() => updateField('preSleepBody', edited.preSleepBody === opt ? '' : opt)}
-                          className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
-                            edited.preSleepBody === opt
-                              ? 'border-yellow-400/60 text-yellow-300'
-                              : 'border-gray-600 text-gray-400'
-                          }`}
-                          style={edited.preSleepBody === opt ? { background: 'rgba(247,247,87,0.12)' } : {}}
+                          className={`pill-btn${edited.preSleepBody === opt ? ' on' : ''}`}
                         >
                           {opt}
                         </button>
                       ))}
                     </div>
-                  </Field>
-                </div>
-
-                <Field label="睡前主要在想的事（選填）">
-                  <input
-                    value={edited.preSleepThoughts ?? ''}
-                    onChange={(e) => updateField('preSleepThoughts', e.target.value)}
-                    placeholder="例如：工作上的一件事、某段對話…"
-                    className="input-field"
-                  />
-                </Field>
-
-                <Field label="近期重複出現的生活主題">
-                  <div className="flex flex-wrap gap-2 mt-1 mb-2">
-                    {LIFE_THEME_OPTIONS.map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => toggleMultiSelect('recentLifeThemes', opt)}
-                        className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
-                          (edited.recentLifeThemes ?? []).includes(opt)
-                            ? 'border-yellow-400/60 text-yellow-300'
-                            : 'border-gray-600 text-gray-400'
-                        }`}
-                        style={(edited.recentLifeThemes ?? []).includes(opt) ? { background: 'rgba(247,247,87,0.12)' } : {}}
-                      >
-                        {opt}
-                      </button>
-                    ))}
                   </div>
-                  <input
-                    value={(edited.recentLifeThemes ?? []).filter((t) => !LIFE_THEME_OPTIONS.includes(t)).join('、')}
-                    onChange={(e) => {
-                      const custom = e.target.value.split('、').map((s) => s.trim()).filter(Boolean);
-                      const presets = (edited.recentLifeThemes ?? []).filter((t) => LIFE_THEME_OPTIONS.includes(t));
-                      updateField('recentLifeThemes', [...presets, ...custom]);
-                    }}
-                    placeholder="其他主題（用「、」分隔）"
-                    className="input-field text-sm"
-                  />
-                </Field>
-              </div>
-            )}
-          </div>
 
-          {/* 夢境補充 */}
-          <div className="border border-gray-700 rounded-2xl overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowDreamExtra(!showDreamExtra)}
-              className="w-full flex items-center justify-between px-4 py-3 text-left"
-            >
-              <span className="text-gray-300 text-sm font-medium">✨ 夢境補充</span>
-              <span className="text-xs text-gray-500">{showDreamExtra ? '收起 ▲' : '選填 ▼'}</span>
-            </button>
+                  <div>
+                    <div
+                      className="mono"
+                      style={{
+                        fontSize: 9,
+                        color: 'var(--muted)',
+                        letterSpacing: '0.22em',
+                        marginBottom: 6,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      睡前主要在想的事（選填）
+                    </div>
+                    <input
+                      value={edited.preSleepThoughts ?? ''}
+                      onChange={(e) => updateField('preSleepThoughts', e.target.value)}
+                      placeholder="例如：工作上的一件事、某段對話…"
+                      className="input-field"
+                      style={{ fontSize: 13 }}
+                    />
+                  </div>
 
-            {showDreamExtra && (
-              <div className="px-4 pb-4 space-y-4 border-t border-gray-700/60">
-                <div className="pt-3">
-                  <Field label="夢中被強調的感官（可複選）">
-                    <div className="flex flex-wrap gap-2 mt-1">
+                  <div>
+                    <div
+                      className="mono"
+                      style={{
+                        fontSize: 9,
+                        color: 'var(--muted)',
+                        letterSpacing: '0.22em',
+                        marginBottom: 6,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      近期主題
+                    </div>
+                    <div className="flex flex-wrap gap-1.5" style={{ marginBottom: 8 }}>
+                      {LIFE_THEME_OPTIONS.map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => toggleMultiSelect('recentLifeThemes', opt)}
+                          className={`pill-btn${(edited.recentLifeThemes ?? []).includes(opt) ? ' on' : ''}`}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      value={(edited.recentLifeThemes ?? []).filter((t) => !LIFE_THEME_OPTIONS.includes(t)).join('、')}
+                      onChange={(e) => {
+                        const custom = e.target.value.split('、').map((s) => s.trim()).filter(Boolean);
+                        const presets = (edited.recentLifeThemes ?? []).filter((t) => LIFE_THEME_OPTIONS.includes(t));
+                        updateField('recentLifeThemes', [...presets, ...custom]);
+                      }}
+                      placeholder="其他主題（用「、」分隔）"
+                      className="input-field"
+                      style={{ fontSize: 12.5 }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Dream extra */}
+            <div className="collapse">
+              <button
+                type="button"
+                className="collapse-head"
+                onClick={() => setShowDreamExtra(!showDreamExtra)}
+              >
+                <span>
+                  {showDreamExtra ? '▾' : '▸'}{' '}
+                  <span className="zh" style={{ fontSize: 11, letterSpacing: '0.08em', color: '#e0c7d6' }}>
+                    補充
+                  </span>{' '}
+                  EXTRA
+                </span>
+                <span className="hint">{showDreamExtra ? '收 起' : '選 填 ▾'}</span>
+              </button>
+              {showDreamExtra && (
+                <div className="collapse-body">
+                  <div>
+                    <div
+                      className="mono"
+                      style={{
+                        fontSize: 9,
+                        color: 'var(--muted)',
+                        letterSpacing: '0.22em',
+                        marginBottom: 6,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      強調感官（可複選）
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
                       {SENSE_OPTIONS.map((opt) => (
                         <button
                           key={opt}
                           type="button"
                           onClick={() => toggleMultiSelect('senses', opt)}
-                          className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
-                            (edited.senses ?? []).includes(opt)
-                              ? 'border-yellow-400/60 text-yellow-300'
-                              : 'border-gray-600 text-gray-400'
-                          }`}
-                          style={(edited.senses ?? []).includes(opt) ? { background: 'rgba(247,247,87,0.12)' } : {}}
+                          className={`pill-btn${(edited.senses ?? []).includes(opt) ? ' on' : ''}`}
                         >
                           {opt}
                         </button>
                       ))}
                     </div>
-                  </Field>
-                </div>
-
-                <Field label="夢的結尾狀態">
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {DREAM_ENDING_OPTIONS.map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => updateField('dreamEnding', edited.dreamEnding === opt ? '' : opt)}
-                        className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
-                          edited.dreamEnding === opt
-                            ? 'border-yellow-400/60 text-yellow-300'
-                            : 'border-gray-600 text-gray-400'
-                        }`}
-                        style={edited.dreamEnding === opt ? { background: 'rgba(247,247,87,0.12)' } : {}}
-                      >
-                        {opt}
-                      </button>
-                    ))}
                   </div>
-                </Field>
 
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-gray-400 text-xs">是否為重複出現的夢</span>
-                  <button
-                    type="button"
-                    onClick={() => updateField('isRecurring', !edited.isRecurring)}
-                    className="relative w-11 h-6 rounded-full transition-colors shrink-0"
-                    style={{ background: edited.isRecurring ? 'rgba(247,247,87,0.6)' : 'rgba(75,85,99,1)' }}
-                  >
-                    <span
-                      className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
-                      style={{ left: edited.isRecurring ? '22px' : '2px' }}
-                    />
-                  </button>
+                  <div>
+                    <div
+                      className="mono"
+                      style={{
+                        fontSize: 9,
+                        color: 'var(--muted)',
+                        letterSpacing: '0.22em',
+                        marginBottom: 6,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      夢的結尾狀態
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {DREAM_ENDING_OPTIONS.map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => updateField('dreamEnding', edited.dreamEnding === opt ? '' : opt)}
+                          className={`pill-btn${edited.dreamEnding === opt ? ' on' : ''}`}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="zh" style={{ fontSize: 12, color: 'var(--ink-dim)' }}>
+                      是否為重複出現的夢
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => updateField('isRecurring', !edited.isRecurring)}
+                      style={{
+                        position: 'relative',
+                        width: 44,
+                        height: 24,
+                        borderRadius: 100,
+                        background: edited.isRecurring ? 'rgba(242,217,143,0.55)' : 'rgba(75,80,110,0.6)',
+                        border: '1px solid var(--border-soft)',
+                        transition: 'background 0.2s',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span
+                        style={{
+                          position: 'absolute',
+                          top: 2,
+                          left: edited.isRecurring ? 22 : 2,
+                          width: 18,
+                          height: 18,
+                          borderRadius: '50%',
+                          background: edited.isRecurring ? 'var(--ink-on-moon)' : 'var(--ink-dim)',
+                          transition: 'left 0.2s',
+                        }}
+                      />
+                    </button>
+                  </div>
+
+                  {edited.isRecurring && (
+                    <div>
+                      <div
+                        className="mono"
+                        style={{
+                          fontSize: 9,
+                          color: 'var(--muted)',
+                          letterSpacing: '0.22em',
+                          marginBottom: 6,
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        關聯到舊記錄
+                      </div>
+                      <input
+                        value={edited.recurringDreamRef ?? ''}
+                        onChange={(e) => updateField('recurringDreamRef', e.target.value)}
+                        placeholder="例如：上次夢到類似場景是…"
+                        className="input-field"
+                        style={{ fontSize: 13 }}
+                      />
+                    </div>
+                  )}
                 </div>
-
-                {edited.isRecurring && (
-                  <Field label="關聯到舊記錄（描述或備注）">
-                    <input
-                      value={edited.recurringDreamRef ?? ''}
-                      onChange={(e) => updateField('recurringDreamRef', e.target.value)}
-                      placeholder="例如：上次夢到類似場景是…"
-                      className="input-field"
-                    />
-                  </Field>
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="flex gap-3 mt-6 pb-2">
+        <div
+          className="flex gap-2.5"
+          style={{
+            padding: '12px 20px 16px',
+            borderTop: '1px solid var(--hair)',
+            background: 'rgba(6,6,15,0.5)',
+          }}
+        >
           <button
+            type="button"
             onClick={onDiscard}
             disabled={isSaving}
-            className="flex-1 py-4 rounded-2xl border border-gray-600 text-gray-300 text-lg font-medium"
+            className="btn-secondary flex-1"
           >
-            丟棄
+            捨 棄 · DISCARD
           </button>
           <button
+            type="button"
             onClick={() => onSave(edited, editedTranscript)}
             disabled={isSaving}
-            className="flex-1 py-4 rounded-2xl text-lg font-semibold disabled:opacity-50"
-            style={{ background: 'var(--accent)', color: '#0a0a08' }}
+            className="btn-primary-sm flex-1"
           >
-            {isSaving ? '儲存中...' : '儲存'}
+            {isSaving ? '封 存 中 ⋯' : '封 存 · ARCHIVE →'}
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-gray-400 text-xs mb-1.5">{label}</label>
-      {children}
     </div>
   );
 }

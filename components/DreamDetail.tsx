@@ -7,34 +7,33 @@ import { Dream } from '@/lib/types';
 
 interface DreamDetailProps {
   dream: Dream;
+  missionIndex: number | null;
 }
 
 const RESONANCE_TYPE_OPTIONS = ['情緒呼應', '事件呼應', '人物呼應', '象徵呼應'];
 
-function formatFullDate(createdAt: Dream['createdAt']): string {
-  let date: Date;
-  if (createdAt instanceof Date) {
-    date = createdAt;
-  } else {
-    date = new Date(createdAt.seconds * 1000);
-  }
-  return date.toLocaleDateString('zh-TW', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+function toDate(createdAt: Dream['createdAt']): Date {
+  if (createdAt instanceof Date) return createdAt;
+  return new Date(createdAt.seconds * 1000);
+}
+
+function formatMissionHead(createdAt: Dream['createdAt']) {
+  const d = toDate(createdAt);
+  const weekday = d.toLocaleDateString('zh-TW', { weekday: 'long' });
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const fullMonth = d.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+  const year = d.getFullYear();
+  const day = String(d.getDate()).padStart(2, '0');
+  return {
+    time: `${hh} : ${mm}`,
+    weekday,
+    date: `${year} · ${fullMonth} · ${day}`,
+  };
 }
 
 function buildAnalysisCard(dream: Dream): string {
-  let date: Date;
-  if (dream.createdAt instanceof Date) {
-    date = dream.createdAt;
-  } else {
-    date = new Date((dream.createdAt as { seconds: number; nanoseconds: number }).seconds * 1000);
-  }
+  const date = toDate(dream.createdAt);
   const dateStr = date.toLocaleDateString('zh-TW', {
     year: 'numeric',
     month: 'long',
@@ -44,7 +43,7 @@ function buildAnalysisCard(dream: Dream): string {
     minute: '2-digit',
   });
 
-  const numbersStr = dream.numbers.length > 0
+  const numbersStr = dream.numbers?.length
     ? dream.numbers.map((n) => `${n.value}（${n.context}）`).join('、')
     : '無';
 
@@ -61,11 +60,11 @@ function buildAnalysisCard(dream: Dream): string {
 標題：${dream.summary}
 情緒：${dream.emotion || '未記錄'}
 清醒度：${dream.lucidity || '未記錄'}
-人物：${dream.characters.length > 0 ? dream.characters.join('、') : '無'}
-地點：${dream.locations.length > 0 ? dream.locations.join('、') : '無'}
-符號：${dream.symbols.length > 0 ? dream.symbols.join('、') : '無'}
+人物：${dream.characters?.length ? dream.characters.join('、') : '無'}
+地點：${dream.locations?.length ? dream.locations.join('、') : '無'}
+符號：${dream.symbols?.length ? dream.symbols.join('、') : '無'}
 數字：${numbersStr}
-標籤：${dream.tags.length > 0 ? dream.tags.join('、') : '無'}
+標籤：${dream.tags?.length ? dream.tags.join('、') : '無'}
 睡前狀態：${preSleepStr}
 原始逐字稿：${dream.transcript || '無'}
 事後驗證：${validationStr}
@@ -74,18 +73,15 @@ function buildAnalysisCard(dream: Dream): string {
 並告訴我這個夢可能在預示或處理什麼。`;
 }
 
-export default function DreamDetail({ dream }: DreamDetailProps) {
+export default function DreamDetail({ dream, missionIndex }: DreamDetailProps) {
   const [copied, setCopied] = useState(false);
 
-  // Validation edit state
   const [isEditingValidation, setIsEditingValidation] = useState(false);
   const [validationDate, setValidationDate] = useState(dream.validationDate ?? '');
   const [validationContent, setValidationContent] = useState(dream.validationContent ?? '');
   const [resonanceLevel, setResonanceLevel] = useState(dream.resonanceLevel ?? 3);
   const [resonanceTypes, setResonanceTypes] = useState<string[]>(dream.resonanceTypes ?? []);
   const [isSavingValidation, setIsSavingValidation] = useState(false);
-
-  // Current validation data (updated on save)
   const [savedValidation, setSavedValidation] = useState({
     validationDate: dream.validationDate,
     validationContent: dream.validationContent,
@@ -93,27 +89,30 @@ export default function DreamDetail({ dream }: DreamDetailProps) {
     resonanceTypes: dream.resonanceTypes,
   });
 
+  const head = formatMissionHead(dream.createdAt);
+  const missionIdText = missionIndex !== null
+    ? `#LOG · ${String(missionIndex).padStart(3, '0')}`
+    : '#LOG';
+
   const handleCopy = async () => {
+    const text = buildAnalysisCard(dream);
     try {
-      await navigator.clipboard.writeText(buildAnalysisCard(dream));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      await navigator.clipboard.writeText(text);
     } catch {
-      // fallback for older browsers
       const el = document.createElement('textarea');
-      el.value = buildAnalysisCard(dream);
+      el.value = text;
       document.body.appendChild(el);
       el.select();
       document.execCommand('copy');
       document.body.removeChild(el);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
   };
 
   const toggleResonanceType = (opt: string) => {
     setResonanceTypes((prev) =>
-      prev.includes(opt) ? prev.filter((t) => t !== opt) : [...prev, opt]
+      prev.includes(opt) ? prev.filter((t) => t !== opt) : [...prev, opt],
     );
   };
 
@@ -124,292 +123,520 @@ export default function DreamDetail({ dream }: DreamDetailProps) {
       const data: Record<string, unknown> = {
         validationDate: validationDate || null,
         validationContent: validationContent || null,
-        resonanceLevel: resonanceLevel,
-        resonanceTypes: resonanceTypes,
+        resonanceLevel,
+        resonanceTypes,
       };
       await updateDoc(doc(db, 'dreams', dream.id), data);
       setSavedValidation({ validationDate, validationContent, resonanceLevel, resonanceTypes });
       setIsEditingValidation(false);
     } catch {
-      alert('儲存失敗，請稍後再試');
+      alert('封存失敗，請稍後再試');
     } finally {
       setIsSavingValidation(false);
     }
   };
 
+  const hasPreSleep = dream.preSleepBody || dream.preSleepThoughts || (dream.recentLifeThemes && dream.recentLifeThemes.length > 0);
+  const hasExtra = (dream.senses && dream.senses.length > 0) || dream.dreamEnding || dream.isRecurring;
+
   return (
-    <div className="space-y-5">
-      <div>
-        <p className="text-gray-400 text-sm">{formatFullDate(dream.createdAt)}</p>
-        <h1 className="text-white text-2xl font-semibold mt-1 leading-snug">{dream.summary}</h1>
-      </div>
-
-      {dream.emotion && (
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">💭</span>
-          <span className="text-indigo-300 text-lg">{dream.emotion}</span>
-        </div>
-      )}
-
-      {dream.lucidity && (
-        <InfoSection title="清醒度" icon="🌙">
-          <p className="text-gray-200">{dream.lucidity}</p>
-        </InfoSection>
-      )}
-
-      {dream.characters.length > 0 && (
-        <InfoSection title="出現人物" icon="👥">
-          <div className="flex flex-wrap gap-2">
-            {dream.characters.map((c) => (
-              <Tag key={c} color="blue">{c}</Tag>
-            ))}
-          </div>
-        </InfoSection>
-      )}
-
-      {dream.locations.length > 0 && (
-        <InfoSection title="地點" icon="📍">
-          <div className="flex flex-wrap gap-2">
-            {dream.locations.map((l) => (
-              <Tag key={l} color="green">{l}</Tag>
-            ))}
-          </div>
-        </InfoSection>
-      )}
-
-      {dream.symbols.length > 0 && (
-        <InfoSection title="符號與意象" icon="✨">
-          <div className="flex flex-wrap gap-2">
-            {dream.symbols.map((s) => (
-              <Tag key={s} color="purple">{s}</Tag>
-            ))}
-          </div>
-        </InfoSection>
-      )}
-
-      {dream.numbers.length > 0 && (
-        <InfoSection title="出現的數字" icon="🔢">
-          <div className="space-y-2">
-            {dream.numbers.map((n, i) => (
-              <div key={i} className="bg-gray-800 rounded-xl p-3 flex items-center gap-3">
-                <span className="text-yellow-400 font-bold text-lg">{n.value}</span>
-                <span className="text-gray-400 text-sm">{n.context}</span>
-              </div>
-            ))}
-          </div>
-        </InfoSection>
-      )}
-
-      {dream.tags.length > 0 && (
-        <InfoSection title="標籤" icon="🏷️">
-          <div className="flex flex-wrap gap-2">
-            {dream.tags.map((t) => (
-              <Tag key={t} color="indigo">{t}</Tag>
-            ))}
-          </div>
-        </InfoSection>
-      )}
-
-      {/* 入夢前狀態 */}
-      {(dream.preSleepBody || dream.preSleepThoughts || (dream.recentLifeThemes && dream.recentLifeThemes.length > 0)) && (
-        <InfoSection title="入夢前狀態" icon="🛏️">
-          <div className="space-y-2">
-            {dream.preSleepBody && (
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500 text-xs">身體感受</span>
-                <span className="text-sm px-2.5 py-1 rounded-full border border-gray-600 text-gray-300">
-                  {dream.preSleepBody}
-                </span>
-              </div>
-            )}
-            {dream.preSleepThoughts && (
-              <div>
-                <span className="text-gray-500 text-xs block mb-1">睡前在想</span>
-                <p className="text-gray-300 text-sm">{dream.preSleepThoughts}</p>
-              </div>
-            )}
-            {dream.recentLifeThemes && dream.recentLifeThemes.length > 0 && (
-              <div>
-                <span className="text-gray-500 text-xs block mb-1.5">近期生活主題</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {dream.recentLifeThemes.map((t) => (
-                    <Tag key={t} color="indigo">{t}</Tag>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </InfoSection>
-      )}
-
-      {/* 夢境補充 */}
-      {(dream.senses?.length || dream.dreamEnding || dream.isRecurring) && (
-        <InfoSection title="夢境補充" icon="🔍">
-          <div className="space-y-2">
-            {dream.senses && dream.senses.length > 0 && (
-              <div>
-                <span className="text-gray-500 text-xs block mb-1.5">強調感官</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {dream.senses.map((s) => (
-                    <Tag key={s} color="purple">{s}</Tag>
-                  ))}
-                </div>
-              </div>
-            )}
-            {dream.dreamEnding && (
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500 text-xs">結尾狀態</span>
-                <span className="text-sm px-2.5 py-1 rounded-full border border-gray-600 text-gray-300">
-                  {dream.dreamEnding}
-                </span>
-              </div>
-            )}
-            {dream.isRecurring && (
-              <div>
-                <span className="text-sm px-2.5 py-1 rounded-full border border-yellow-700/40 text-yellow-300 bg-yellow-900/20">
-                  🔄 重複出現的夢
-                </span>
-                {dream.recurringDreamRef && (
-                  <p className="text-gray-400 text-sm mt-2">{dream.recurringDreamRef}</p>
-                )}
-              </div>
-            )}
-          </div>
-        </InfoSection>
-      )}
-
-      {dream.transcript && (
-        <InfoSection title="原始逐字稿" icon="📝">
-          <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{dream.transcript}</p>
-        </InfoSection>
-      )}
-
-      {/* 複製分析卡 */}
-      <div className="rounded-2xl border border-gray-700 p-4 space-y-3">
-        <div>
-          <h3 className="text-white text-sm font-medium">夢境分析卡</h3>
-          <p className="text-gray-500 text-xs mt-0.5">複製後貼給任何 AI，即可獲得夢境解析</p>
-        </div>
-        <p className="text-gray-400 text-xs leading-relaxed">
-          將分析卡貼到任何一個 AI 模型，就能產出你的夢境分析，快去看看你的夢跟你說了什麼吧！
-        </p>
-        <button
-          onClick={handleCopy}
-          className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl text-sm font-medium transition-all"
+    <div className="flex flex-col gap-2.5 pt-3">
+      {/* Head card */}
+      <div
+        className="panel"
+        style={{
+          padding: '14px 16px',
+          borderRadius: 16,
+          background: 'rgba(16,19,38,0.55)',
+          border: '1px solid var(--border-soft)',
+        }}
+      >
+        <div
+          className="mono flex justify-between items-center"
           style={{
-            background: copied ? 'rgba(74,222,128,0.15)' : 'var(--accent)',
-            color: copied ? 'rgb(74,222,128)' : '#0a0a08',
-            border: copied ? '1px solid rgba(74,222,128,0.4)' : 'none',
+            fontSize: 9.5,
+            color: 'var(--muted)',
+            letterSpacing: '0.28em',
+            textTransform: 'uppercase',
+            marginBottom: 10,
           }}
         >
-          {copied ? '✓ 已複製' : '📋 複製分析卡'}
+          <span>
+            <span style={{ color: 'var(--moon)' }}>{missionIdText}</span> · {head.weekday}
+          </span>
+          <span>{head.time}</span>
+        </div>
+        <p
+          className="zh"
+          style={{
+            fontWeight: 500,
+            fontSize: 17,
+            lineHeight: 1.7,
+            color: 'var(--ink)',
+            margin: '0 0 10px',
+          }}
+        >
+          {dream.summary}
+        </p>
+        <div
+          className="mono"
+          style={{
+            fontSize: 9.5,
+            color: 'var(--whisper)',
+            letterSpacing: '0.22em',
+            textTransform: 'uppercase',
+          }}
+        >
+          {head.date}
+        </div>
+      </div>
+
+      {/* Emotion */}
+      {dream.emotion && (
+        <InfoChannel ch="emo" zh="情緒" en="EMOTION">
+          <div
+            className="zh"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              color: 'var(--lavender)',
+              fontSize: 14,
+            }}
+          >
+            <span
+              className="mono"
+              style={{ fontSize: 9, letterSpacing: '0.25em', color: 'var(--muted)' }}
+            >
+              EMO ·
+            </span>
+            {dream.emotion}
+          </div>
+        </InfoChannel>
+      )}
+
+      {/* Lucidity */}
+      {dream.lucidity && (
+        <InfoChannel ch="lucid" zh="清醒度" en="LUCIDITY">
+          <div className="kv-row">
+            <span className="k">狀態</span>
+            <span className="v zh">{dream.lucidity}</span>
+          </div>
+        </InfoChannel>
+      )}
+
+      {/* Characters */}
+      {dream.characters && dream.characters.length > 0 && (
+        <InfoChannel ch="entity" zh="人物" en="ENTITIES" right={`× ${dream.characters.length}`}>
+          <div className="flex flex-wrap gap-1.5">
+            {dream.characters.map((c) => (
+              <span key={c} className="chip sky">{c}</span>
+            ))}
+          </div>
+        </InfoChannel>
+      )}
+
+      {/* Locations */}
+      {dream.locations && dream.locations.length > 0 && (
+        <InfoChannel ch="loc" zh="地點" en="LOCATIONS" right={`× ${dream.locations.length}`}>
+          <div className="flex flex-wrap gap-1.5">
+            {dream.locations.map((l) => (
+              <span key={l} className="chip">{l}</span>
+            ))}
+          </div>
+        </InfoChannel>
+      )}
+
+      {/* Symbols */}
+      {dream.symbols && dream.symbols.length > 0 && (
+        <InfoChannel ch="sym" zh="符號" en="SYMBOLS" right={`× ${dream.symbols.length}`}>
+          <div className="flex flex-wrap gap-1.5">
+            {dream.symbols.map((s) => (
+              <span key={s} className="chip lav">{s}</span>
+            ))}
+          </div>
+        </InfoChannel>
+      )}
+
+      {/* Numbers */}
+      {dream.numbers && dream.numbers.length > 0 && (
+        <InfoChannel ch="num" zh="數字" en="NUMBERS">
+          <div className="flex flex-col gap-1.5">
+            {dream.numbers.map((n, i) => (
+              <div key={i} className="number-chip">
+                <span className="n">{n.value}</span>
+                <span className="ctx">{n.context}</span>
+              </div>
+            ))}
+          </div>
+        </InfoChannel>
+      )}
+
+      {/* Tags */}
+      {dream.tags && dream.tags.length > 0 && (
+        <InfoChannel ch="tag" zh="標籤" en="TAGS">
+          <div className="flex flex-wrap gap-1.5">
+            {dream.tags.map((t) => (
+              <span key={t} className="chip moon">{t}</span>
+            ))}
+          </div>
+        </InfoChannel>
+      )}
+
+      {/* Pre-sleep */}
+      {hasPreSleep && (
+        <InfoChannel ch="pre" zh="入夢前" en="PRE-SLEEP">
+          {dream.preSleepBody && (
+            <div className="kv-row">
+              <span className="k">身體</span>
+              <span className="v zh">{dream.preSleepBody}</span>
+            </div>
+          )}
+          {dream.preSleepThoughts && (
+            <div className="kv-row">
+              <span className="k">思緒</span>
+              <span className="v zh">{dream.preSleepThoughts}</span>
+            </div>
+          )}
+          {dream.recentLifeThemes && dream.recentLifeThemes.length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <div
+                className="mono"
+                style={{
+                  fontSize: 9,
+                  color: 'var(--muted)',
+                  letterSpacing: '0.22em',
+                  marginBottom: 6,
+                  textTransform: 'uppercase',
+                }}
+              >
+                近期主題
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {dream.recentLifeThemes.map((t) => (
+                  <span key={t} className="chip">{t}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </InfoChannel>
+      )}
+
+      {/* Extra */}
+      {hasExtra && (
+        <InfoChannel ch="extra" zh="補充" en="EXTRA">
+          {dream.senses && dream.senses.length > 0 && (
+            <>
+              <div
+                className="mono"
+                style={{
+                  fontSize: 9,
+                  color: 'var(--muted)',
+                  letterSpacing: '0.22em',
+                  marginBottom: 6,
+                  textTransform: 'uppercase',
+                }}
+              >
+                強調感官
+              </div>
+              <div className="flex flex-wrap gap-1.5" style={{ marginBottom: 10 }}>
+                {dream.senses.map((s) => (
+                  <span key={s} className="chip lav">{s}</span>
+                ))}
+              </div>
+            </>
+          )}
+          {dream.dreamEnding && (
+            <div className="kv-row">
+              <span className="k">結尾</span>
+              <span className="v zh">{dream.dreamEnding}</span>
+            </div>
+          )}
+          {dream.isRecurring && (
+            <div style={{ marginTop: 10 }}>
+              <span className="chip moon">🔄 重 複 出 現 的 夢</span>
+              {dream.recurringDreamRef && (
+                <p
+                  className="zh"
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--ink-dim)',
+                    marginTop: 8,
+                  }}
+                >
+                  {dream.recurringDreamRef}
+                </p>
+              )}
+            </div>
+          )}
+        </InfoChannel>
+      )}
+
+      {/* Transcript */}
+      {dream.transcript && (
+        <InfoChannel ch="trans" zh="逐字稿" en="TRANSCRIPT">
+          <p
+            className="zh"
+            style={{
+              fontSize: 12.5,
+              lineHeight: 1.85,
+              color: 'var(--ink-dim)',
+              whiteSpace: 'pre-wrap',
+              margin: 0,
+            }}
+          >
+            {dream.transcript}
+          </p>
+        </InfoChannel>
+      )}
+
+      {/* Copy analysis packet */}
+      <div className="copy-card">
+        <div
+          style={{
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 600,
+            fontSize: 13,
+            color: 'var(--ink)',
+          }}
+        >
+          解析封包
+          <span
+            className="mono"
+            style={{
+              fontSize: 9.5,
+              color: 'var(--muted)',
+              letterSpacing: '0.22em',
+              marginLeft: 6,
+            }}
+          >
+            ANALYSIS PACKET
+          </span>
+        </div>
+        <div
+          className="zh"
+          style={{
+            fontSize: 11.5,
+            color: 'var(--ink-dim)',
+            margin: '4px 0 12px',
+            lineHeight: 1.7,
+          }}
+        >
+          可貼入任何 AI 模型，取得完整解析（心理 · 榮格 · 五行 · 符號）
+        </div>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="btn-primary-sm w-full"
+          style={
+            copied
+              ? {
+                background: 'rgba(140,220,180,0.15)',
+                color: '#8cdcb4',
+                border: '1px solid rgba(140,220,180,0.4)',
+                boxShadow: 'none',
+              }
+              : undefined
+          }
+        >
+          {copied ? '✓ 已 複 製' : '⧉　複 製 封 包 · COPY'}
         </button>
       </div>
 
-      {/* 事後驗證 */}
-      <div className="bg-gray-800/50 rounded-2xl p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-gray-400 text-sm flex items-center gap-1.5">
-            <span>🔮</span>
-            事後驗證
-          </h3>
+      {/* Validation */}
+      <div className="validate-card">
+        <div
+          className="flex justify-between items-center"
+          style={{ marginBottom: 10 }}
+        >
+          <span
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+          >
+            <span style={{ color: '#8cdcb4' }}>■</span>
+            <span className="zh" style={{ fontSize: 11, letterSpacing: '0.08em', color: '#a9e6c7' }}>
+              事後驗證
+            </span>
+            <span
+              className="mono"
+              style={{ fontSize: 9, letterSpacing: '0.22em', color: 'var(--whisper)' }}
+            >
+              VALIDATE
+            </span>
+          </span>
           {!isEditingValidation && (
             <button
+              type="button"
               onClick={() => setIsEditingValidation(true)}
-              className="text-xs px-3 py-1 rounded-lg border border-gray-600 text-gray-400"
+              className="mono"
+              style={{
+                fontSize: 9.5,
+                color: 'var(--moon)',
+                letterSpacing: '0.22em',
+                padding: '4px 10px',
+                border: '1px solid var(--border)',
+                borderRadius: 100,
+                background: 'transparent',
+              }}
             >
-              {savedValidation.validationContent ? '編輯' : '填寫驗證'}
+              {savedValidation.validationContent ? '編 輯' : '填 寫'}
             </button>
           )}
         </div>
 
         {!isEditingValidation ? (
           savedValidation.validationContent ? (
-            <div className="space-y-3">
+            <div className="flex flex-col gap-3">
               {savedValidation.validationDate && (
-                <p className="text-gray-500 text-xs">驗證日期：{savedValidation.validationDate}</p>
+                <p
+                  className="mono"
+                  style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: '0.2em' }}
+                >
+                  DATE · {savedValidation.validationDate}
+                </p>
               )}
-              <p className="text-gray-200 text-sm leading-relaxed">{savedValidation.validationContent}</p>
+              <p
+                className="zh"
+                style={{
+                  fontSize: 13,
+                  color: 'var(--ink-dim)',
+                  lineHeight: 1.7,
+                  margin: 0,
+                }}
+              >
+                {savedValidation.validationContent}
+              </p>
               {savedValidation.resonanceLevel && (
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-500 text-xs">呼應強度</span>
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <span
-                        key={n}
-                        className="text-sm"
-                        style={{ opacity: n <= (savedValidation.resonanceLevel ?? 0) ? 1 : 0.2 }}
-                      >
-                        ⭐
-                      </span>
-                    ))}
-                  </div>
+                <div className="resonance-bar">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <span
+                      key={n}
+                      className={`seg${n <= (savedValidation.resonanceLevel ?? 0) ? ' on' : ''}`}
+                    />
+                  ))}
+                  <span className="lbl">RESONANCE {savedValidation.resonanceLevel}/5</span>
                 </div>
               )}
               {savedValidation.resonanceTypes && savedValidation.resonanceTypes.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {savedValidation.resonanceTypes.map((t) => (
-                    <Tag key={t} color="indigo">{t}</Tag>
+                    <span key={t} className="chip moon">{t}</span>
                   ))}
                 </div>
               )}
             </div>
           ) : (
-            <p className="text-gray-600 text-sm">尚未驗證，可於夢境發生後回填</p>
+            <p
+              className="zh"
+              style={{ fontSize: 12.5, color: 'var(--whisper)', margin: 0 }}
+            >
+              尚未驗證，可於夢境發生後回填
+            </p>
           )
         ) : (
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
             <div>
-              <label className="block text-gray-500 text-xs mb-1.5">驗證日期</label>
+              <label
+                className="mono"
+                style={{
+                  display: 'block',
+                  fontSize: 9.5,
+                  color: 'var(--muted)',
+                  letterSpacing: '0.22em',
+                  textTransform: 'uppercase',
+                  marginBottom: 6,
+                }}
+              >
+                驗 證 日 期
+              </label>
               <input
                 type="date"
                 value={validationDate}
                 onChange={(e) => setValidationDate(e.target.value)}
-                className="input-field text-sm"
+                className="input-field"
+                style={{ fontSize: 13 }}
               />
             </div>
 
             <div>
-              <label className="block text-gray-500 text-xs mb-1.5">驗證內容</label>
+              <label
+                className="mono"
+                style={{
+                  display: 'block',
+                  fontSize: 9.5,
+                  color: 'var(--muted)',
+                  letterSpacing: '0.22em',
+                  textTransform: 'uppercase',
+                  marginBottom: 6,
+                }}
+              >
+                驗 證 內 容
+              </label>
               <textarea
                 value={validationContent}
                 onChange={(e) => setValidationContent(e.target.value)}
                 rows={4}
                 placeholder="描述夢境與現實的呼應…"
-                className="input-field text-sm"
+                className="input-field"
+                style={{ fontSize: 13, resize: 'vertical' }}
               />
             </div>
 
             <div>
-              <label className="block text-gray-500 text-xs mb-2">呼應強度（{resonanceLevel}/5）</label>
-              <input
-                type="range"
-                min={1}
-                max={5}
-                value={resonanceLevel}
-                onChange={(e) => setResonanceLevel(Number(e.target.value))}
-                className="w-full accent-yellow-400"
-              />
-              <div className="flex justify-between text-xs text-gray-600 mt-1">
-                <span>微弱</span>
-                <span>強烈</span>
+              <label
+                className="mono"
+                style={{
+                  display: 'block',
+                  fontSize: 9.5,
+                  color: 'var(--muted)',
+                  letterSpacing: '0.22em',
+                  textTransform: 'uppercase',
+                  marginBottom: 8,
+                }}
+              >
+                呼 應 強 度 · {resonanceLevel}/5
+              </label>
+              <div className="resonance-bar" style={{ marginBottom: 6 }}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={`seg${n <= resonanceLevel ? ' on' : ''}`}
+                    onClick={() => setResonanceLevel(n)}
+                    aria-label={`強度 ${n}`}
+                    style={{ border: 'none', padding: 0 }}
+                  />
+                ))}
+              </div>
+              <div
+                className="mono flex justify-between"
+                style={{ fontSize: 9, color: 'var(--whisper)', letterSpacing: '0.2em' }}
+              >
+                <span>微 弱</span>
+                <span>強 烈</span>
               </div>
             </div>
 
             <div>
-              <label className="block text-gray-500 text-xs mb-2">呼應類型（可複選）</label>
-              <div className="flex flex-wrap gap-2">
+              <label
+                className="mono"
+                style={{
+                  display: 'block',
+                  fontSize: 9.5,
+                  color: 'var(--muted)',
+                  letterSpacing: '0.22em',
+                  textTransform: 'uppercase',
+                  marginBottom: 8,
+                }}
+              >
+                呼 應 類 型
+              </label>
+              <div className="flex flex-wrap gap-1.5">
                 {RESONANCE_TYPE_OPTIONS.map((opt) => (
                   <button
                     key={opt}
                     type="button"
                     onClick={() => toggleResonanceType(opt)}
-                    className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
-                      resonanceTypes.includes(opt)
-                        ? 'border-yellow-400/60 text-yellow-300'
-                        : 'border-gray-600 text-gray-400'
-                    }`}
-                    style={resonanceTypes.includes(opt) ? { background: 'rgba(247,247,87,0.12)' } : {}}
+                    className={`pill-btn${resonanceTypes.includes(opt) ? ' on' : ''}`}
                   >
                     {opt}
                   </button>
@@ -417,20 +644,21 @@ export default function DreamDetail({ dream }: DreamDetailProps) {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-1">
+            <div className="flex gap-2.5 pt-1">
               <button
+                type="button"
                 onClick={() => setIsEditingValidation(false)}
-                className="flex-1 py-2.5 rounded-xl border border-gray-600 text-gray-400 text-sm"
+                className="btn-secondary flex-1"
               >
-                取消
+                取 消
               </button>
               <button
+                type="button"
                 onClick={handleSaveValidation}
                 disabled={isSavingValidation}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
-                style={{ background: 'var(--accent)', color: '#0a0a08' }}
+                className="btn-primary-sm flex-1"
               >
-                {isSavingValidation ? '儲存中...' : '儲存驗證'}
+                {isSavingValidation ? '封 存 中 ⋯' : '封 存 驗 證'}
               </button>
             </div>
           </div>
@@ -440,40 +668,30 @@ export default function DreamDetail({ dream }: DreamDetailProps) {
   );
 }
 
-function InfoSection({
-  title,
-  icon,
+function InfoChannel({
+  ch,
+  zh,
+  en,
+  right,
   children,
 }: {
-  title: string;
-  icon: string;
+  ch: 'emo' | 'lucid' | 'entity' | 'loc' | 'sym' | 'num' | 'tag' | 'pre' | 'extra' | 'trans';
+  zh: string;
+  en: string;
+  right?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-gray-800/50 rounded-2xl p-4">
-      <h3 className="text-gray-400 text-sm flex items-center gap-1.5 mb-3">
-        <span>{icon}</span>
-        {title}
-      </h3>
+    <div className={`info-section ch-${ch}`}>
+      <div className="info-head">
+        <span className="label">
+          <span className="dot" />
+          <span className="zh">{zh}</span>
+          <span className="en">{en}</span>
+        </span>
+        {right && <span className="right">{right}</span>}
+      </div>
       {children}
     </div>
-  );
-}
-
-function Tag({
-  children,
-  color,
-}: {
-  children: React.ReactNode;
-  color: 'blue' | 'green' | 'purple' | 'indigo';
-}) {
-  const colors = {
-    blue: 'bg-blue-900/40 text-blue-300 border-blue-700/40',
-    green: 'bg-green-900/40 text-green-300 border-green-700/40',
-    purple: 'bg-purple-900/40 text-purple-300 border-purple-700/40',
-    indigo: 'bg-indigo-900/40 text-indigo-300 border-indigo-700/40',
-  };
-  return (
-    <span className={`text-sm px-3 py-1 rounded-full border ${colors[color]}`}>{children}</span>
   );
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dream-logger-v4';
+const CACHE_NAME = 'dream-logger-v5';
 const STATIC_ASSETS = ['/', '/record', '/dreams'];
 
 self.addEventListener('install', (event) => {
